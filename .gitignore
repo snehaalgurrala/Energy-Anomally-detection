@@ -2,6 +2,9 @@
 daily_dataset.csv
 daily_dataset.csv.xlsx
 
+# Pipeline output (derived, regenerable from the local dataset)
+results/
+
 # Python
 __pycache__/
 *.py[cod]

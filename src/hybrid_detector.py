@@ -93,6 +93,76 @@ over the union of the two individual anomaly sets" than a source of
 brand-new joint-evidence discoveries. See the validation report and
 final summary for this trade-off's effect on the results.
 
+Severe-drop override
+------------------------
+At HYBRID_ANOMALY_THRESHOLD alone, every flagged anomaly is a Spike --
+zero Drops, even though statistical_detector.py independently identifies
+severe drops (including robust_score == -inf, its strongest possible
+evidence). Investigation (see conversation notes) found the cause and
+ruled out two fixes before adopting a third:
+
+  * NOT the threshold alone: max hybrid_score achievable by any drop is
+    0.9895, just under 0.99, but this ceiling exists at every threshold
+    near it -- there is no round cutoff that admits a meaningful number
+    of drops without also admitting rows with weak, uncorroborated
+    combined evidence (at 0.98, drops still contribute 0 of the flags).
+  * IS the Isolation Forest feature representation, combined with an
+    inherent property of the data: energy_sum can't go negative, so
+    relative_deviation (isolation_forest_detector.py) is bounded below
+    at -1 but unbounded above. "Flat baseline collapses to (near) zero"
+    is therefore a common pattern many different meters share -- common
+    patterns are, correctly, not what an isolation-based model treats as
+    rare/isolated. The 653 eligible rows with statistical_score == -inf
+    all reach only if_evidence 0.836-0.979 (never 0.99). This is not
+    statistical_detector.py behaving badly -- its own docstring already
+    documents and justifies the -inf case -- the problem is specific to
+    combining it with Isolation Forest's rarity-based scoring for this
+    one direction.
+  * Confirmed IF is not simply "worse" at ranking drop severity, it is
+    ranking something close to unrelated: the top 200 eligible drops by
+    if_evidence and the top 200 by statistical_evidence share ZERO rows
+    in common, and correlation(if_score, |statistical_score|) restricted
+    to drops is 0.13 (essentially none), vs. a real, usable relationship
+    for spikes. Requiring IF corroboration for drops therefore is not
+    "requiring a second opinion" the way it usefully is for spikes -- it
+    is requiring agreement from a signal that is not measuring the same
+    thing for this direction.
+
+Two candidate fixes were tested and rejected:
+  * A drop-specific hybrid_score threshold, found the same way as
+    HYBRID_ANOMALY_THRESHOLD (the point where the "neither individual
+    detector agrees" count hits zero *within drops only*): that point is
+    0.975, admitting only 198 of 507,200 drop rows (0.039%). Checking
+    those 198 against the severe-drop set below showed they are almost
+    entirely the upper tail of it, selected by requiring incidentally
+    high if_evidence that (per the paragraph above) does not actually
+    track drop severity -- so this threshold does not add information,
+    it just prunes valid statistical evidence by an uninformative
+    second criterion.
+  * Matching drops to spikes' flag *rate* (the drop hybrid_score
+    percentile that flags the same 0.87%-of-population share spikes get)
+    was tested and rejected outright: it requires a cutoff of 0.9256,
+    which would flag 4,435 drops, 3,860 of them (87%) agreed on by
+    *neither* individual detector -- exactly the low-quality, forced-rate
+    outcome the task rules out.
+
+Adopted instead: is_severe_drop = eligible & (deviation < 0) &
+is_statistical_anomaly, then is_anomaly = is_hybrid_anomaly OR
+is_severe_drop. This introduces no new constant -- is_statistical_anomaly
+is statistical_detector.py's own already-justified decision (see its
+docstring), reused unchanged; deviation < 0 is a sign check, not a
+magic number. It never overlaps with is_hybrid_anomaly (0 of the 670
+qualifying rows also clear HYBRID_ANOMALY_THRESHOLD), so it purely adds
+drop coverage rather than double-counting. hybrid_score itself is
+unmodified by this rule -- it stays the continuous ranking; only the
+binary anomaly_status decision gains this second, direction-specific
+path. Caveat, not hidden: the 670 qualifying rows span 223 meters but
+are concentrated on a handful of them (one meter alone contributes 32),
+consistent with a few low/intermittent-consumption meters whose "off"
+days repeatedly look extreme against a baseline set by an occasional
+"on" day -- a pre-existing property of the statistical detector's own
+zero-MAD handling, not something newly introduced here.
+
 Eligibility
 ------------
 A row is hybrid-eligible iff isolation_forest_detector.
@@ -110,29 +180,9 @@ Anomaly type (Spike / Drop / Other)
 ---------------------------------------
 For rows with anomaly_status == "Anomaly" only: Spike if deviation > 0
 (today's consumption above its own rolling baseline), Drop if deviation
-< 0, Other if deviation == 0 (evidence is directionless -- can only
-happen via the IF signal, since a genuinely zero deviation is, by
-definition, not what the statistical detector flags). Normal rows get
-None -- classifying a non-anomaly's "direction" is not meaningful.
-
-Observed and worth flagging explicitly: at HYBRID_ANOMALY_THRESHOLD =
-0.99, every flagged anomaly in this run is a Spike -- zero Drops. This
-is not a code defect; it traces to a real, checked asymmetry.
-energy_sum can't go below zero, so relative_deviation (see
-isolation_forest_detector.py) is bounded below at -1, while it is
-unbounded above. A meter dropping from a stable baseline to zero is
-therefore a common pattern many different meters share (they all land
-near relative_deviation = -1, relative_mad = 0), so Isolation Forest --
-which scores by how rare a point's feature combination is -- correctly
-does not treat it as highly isolated: the 653 eligible rows with the
-statistical detector's own maximum evidence (robust_score = -inf, i.e.
-"infinitely" anomalous by that detector alone) top out at if_evidence
-0.979 (max hybrid_score observed for any drop: 0.9895, just under the
-0.99 bar). A comparably extreme spike has no such ceiling -- its
-relative_deviation is unbounded and rare, so it reaches if_evidence near
-1.0 and clears the bar easily. This is a genuine current limitation of
-the combined ranking at this threshold, reported here rather than
-patched with a direction-specific threshold or constant.
+< 0 (this now includes rows admitted only via the severe-drop override
+above), Other if deviation == 0 (evidence is directionless). Normal rows
+get None -- classifying a non-anomaly's "direction" is not meaningful.
 
 Confidence
 -----------
@@ -200,17 +250,19 @@ def score_hybrid_anomalies(features: pd.DataFrame, stat_result: pd.DataFrame, if
     result["hybrid_score"] = STATISTICAL_WEIGHT * result["statistical_evidence"] + IF_WEIGHT * result["if_evidence"]
 
     is_hybrid_anomaly = eligible & (result["hybrid_score"] >= HYBRID_ANOMALY_THRESHOLD)
-    result["anomaly_status"] = np.where(eligible, np.where(is_hybrid_anomaly, "Anomaly", "Normal"), None)
+    is_severe_drop = eligible & (result["deviation"] < 0) & result["is_statistical_anomaly"]
+    is_anomaly = is_hybrid_anomaly | is_severe_drop
+    result["anomaly_status"] = np.where(eligible, np.where(is_anomaly, "Anomaly", "Normal"), None)
 
     result["anomaly_type"] = np.select(
-        [is_hybrid_anomaly & (result["deviation"] > 0), is_hybrid_anomaly & (result["deviation"] < 0), is_hybrid_anomaly],
+        [is_anomaly & (result["deviation"] > 0), is_anomaly & (result["deviation"] < 0), is_anomaly],
         ["Spike", "Drop", "Other"],
         default=None,
     )
 
-    both = is_hybrid_anomaly & result["is_statistical_anomaly"] & result["is_if_anomaly"]
-    single = is_hybrid_anomaly & (result["is_statistical_anomaly"] ^ result["is_if_anomaly"])
-    combined_only = is_hybrid_anomaly & ~result["is_statistical_anomaly"] & ~result["is_if_anomaly"]
+    both = is_anomaly & result["is_statistical_anomaly"] & result["is_if_anomaly"]
+    single = is_anomaly & (result["is_statistical_anomaly"] ^ result["is_if_anomaly"])
+    combined_only = is_anomaly & ~result["is_statistical_anomaly"] & ~result["is_if_anomaly"]
     result["confidence"] = np.select([both, single, combined_only], ["Both", "Single", "Combined"], default=None)
 
     result.attrs["threshold"] = HYBRID_ANOMALY_THRESHOLD
