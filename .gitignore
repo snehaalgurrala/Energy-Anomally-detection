@@ -1,0 +1,23 @@
+# Local dataset (keep data out of the repo)
+daily_dataset.csv
+daily_dataset.csv.xlsx
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
