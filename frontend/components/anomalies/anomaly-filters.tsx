@@ -1,6 +1,6 @@
 "use client";
 
-import type { FormEvent } from "react";
+import { useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { buildAnomaliesHref, type AnomalyQueryState } from "@/lib/anomaly-query";
 import type { SortColumn } from "@/lib/types";
@@ -21,26 +21,37 @@ const LABEL = "flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-z
 
 export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
   const router = useRouter();
-
-  function apply(changes: Partial<AnomalyQueryState>) {
-    router.push(buildAnomaliesHref(query, changes));
-  }
+  const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    apply({
+    const changes: Partial<AnomalyQueryState> = {
       meter: String(formData.get("meter") ?? "").trim(),
+      anomaly_type: String(formData.get("anomaly_type") ?? ""),
       start_date: String(formData.get("start_date") ?? ""),
       end_date: String(formData.get("end_date") ?? ""),
+      sort_by: formData.get("sort_by") as SortColumn,
+      ascending: formData.get("ascending") === "asc",
+      page_size: Number(formData.get("page_size")),
+    };
+    const href = buildAnomaliesHref(query, changes);
+    // Wrapping the navigation in a transition keeps this form (and the
+    // current results) mounted while the new page renders, instead of the
+    // route's loading.tsx replacing the whole page for a filter tweak.
+    startTransition(() => {
+      router.push(href);
     });
   }
 
   return (
     <form
-      key={`${query.meter}|${query.start_date}|${query.end_date}`}
+      key={`${query.meter}|${query.anomaly_type}|${query.start_date}|${query.end_date}|${query.sort_by}|${query.ascending}|${query.page_size}`}
       onSubmit={handleSubmit}
-      className="flex flex-wrap items-end gap-3 rounded-lg border border-black/10 bg-white p-4 dark:border-white/15 dark:bg-black/20"
+      aria-busy={isPending}
+      className={`flex flex-wrap items-end gap-3 rounded-lg border border-black/10 bg-white p-4 transition-opacity dark:border-white/15 dark:bg-black/20 ${
+        isPending ? "opacity-60" : ""
+      }`}
     >
       <label className={LABEL}>
         Meter
@@ -55,11 +66,7 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
 
       <label className={LABEL}>
         Anomaly type
-        <select
-          value={query.anomaly_type}
-          onChange={(e) => apply({ anomaly_type: e.target.value })}
-          className={FIELD}
-        >
+        <select name="anomaly_type" defaultValue={query.anomaly_type} className={FIELD}>
           <option value="">All</option>
           <option value="Spike">Spike</option>
           <option value="Drop">Drop</option>
@@ -78,11 +85,7 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
 
       <label className={LABEL}>
         Sort by
-        <select
-          value={query.sort_by}
-          onChange={(e) => apply({ sort_by: e.target.value as SortColumn })}
-          className={FIELD}
-        >
+        <select name="sort_by" defaultValue={query.sort_by} className={FIELD}>
           {SORT_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -93,11 +96,7 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
 
       <label className={LABEL}>
         Direction
-        <select
-          value={query.ascending ? "asc" : "desc"}
-          onChange={(e) => apply({ ascending: e.target.value === "asc" })}
-          className={FIELD}
-        >
+        <select name="ascending" defaultValue={query.ascending ? "asc" : "desc"} className={FIELD}>
           <option value="desc">Descending</option>
           <option value="asc">Ascending</option>
         </select>
@@ -105,11 +104,7 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
 
       <label className={LABEL}>
         Page size
-        <select
-          value={query.page_size}
-          onChange={(e) => apply({ page_size: Number(e.target.value) })}
-          className={FIELD}
-        >
+        <select name="page_size" defaultValue={query.page_size} className={FIELD}>
           {PAGE_SIZE_OPTIONS.map((size) => (
             <option key={size} value={size}>
               {size}
@@ -120,9 +115,10 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
 
       <button
         type="submit"
-        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        disabled={isPending}
+        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
       >
-        Apply
+        {isPending ? "Applying…" : "Apply"}
       </button>
     </form>
   );

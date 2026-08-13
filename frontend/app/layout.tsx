@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
+import { NavLink } from "@/components/nav-link";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,12 +27,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <nav className="border-b border-black/10 dark:border-white/15">
           <div className="mx-auto flex w-full max-w-6xl items-center gap-4 px-6 py-3 text-sm">
-            <Link href="/" className="font-medium hover:underline">
+            <NavLink
+              href="/"
+              className="text-zinc-500 hover:underline dark:text-zinc-400"
+              activeClassName="font-medium hover:underline"
+            >
               Dashboard
-            </Link>
-            <Link href="/anomalies" className="text-zinc-500 hover:underline dark:text-zinc-400">
+            </NavLink>
+            <NavLink
+              href="/anomalies"
+              className="text-zinc-500 hover:underline dark:text-zinc-400"
+              activeClassName="font-medium hover:underline"
+            >
               Anomalies
-            </Link>
+            </NavLink>
           </div>
         </nav>
         {children}

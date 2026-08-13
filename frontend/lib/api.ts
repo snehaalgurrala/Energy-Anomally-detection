@@ -8,9 +8,12 @@ import type {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export class ApiError extends Error {
-  constructor(message: string) {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "ApiError";
+    this.status = status;
   }
 }
 
@@ -27,7 +30,7 @@ async function apiFetch<T>(path: string): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new ApiError(`API request to ${path} failed with status ${res.status}.`);
+    throw new ApiError(`API request to ${path} failed with status ${res.status}.`, res.status);
   }
 
   return res.json() as Promise<T>;
