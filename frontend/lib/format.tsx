@@ -36,6 +36,14 @@ export function formatEvidence(value: number | null): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+// Shared container/button class fragments reused verbatim across pages and
+// components (cards, empty states, pill buttons) so the strings don't drift
+// out of sync across files. Callers append their own padding/hover/etc. on
+// top, since those vary by usage.
+export const CARD = "rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-black/20";
+export const PILL_BUTTON =
+  "rounded-full border border-black/[.08] px-4 text-sm font-medium transition-colors dark:border-white/[.145]";
+
 // Slots 1 (blue) and 2 (orange) of the app's categorical palette, in fixed
 // order -- validated as CVD-safe adjacent to each other in both color modes.
 // Kept as raw hex so non-Tailwind consumers (e.g. chart SVG fills) can reuse

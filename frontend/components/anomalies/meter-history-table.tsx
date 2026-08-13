@@ -1,5 +1,6 @@
 import type { AnomalyRecord } from "@/lib/types";
 import {
+  CARD,
   formatDay,
   formatNumber,
   formatEvidence,
@@ -17,7 +18,7 @@ export function MeterHistoryTable({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-black/10 bg-white p-6 text-center text-sm text-zinc-500 dark:border-white/15 dark:bg-black/20 dark:text-zinc-400">
+      <div className={`${CARD} p-6 text-center text-sm text-zinc-500 dark:text-zinc-400`}>
         No history available for this meter.
       </div>
     );

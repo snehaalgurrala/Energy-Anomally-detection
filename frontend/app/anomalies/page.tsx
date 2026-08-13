@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import { getAnomalies } from "@/lib/api";
+import { CARD } from "@/lib/format";
 import { parseAnomalyQuery, toApiParams, type RawSearchParams } from "@/lib/anomaly-query";
 import { AnomalyFilters } from "@/components/anomalies/anomaly-filters";
 import { AnomalyTable } from "@/components/anomalies/anomaly-table";
@@ -7,6 +9,10 @@ import { AnomalyPagination } from "@/components/anomalies/anomaly-pagination";
 // Anomaly counts and filters depend on the current URL query, so this route
 // is always rendered per request rather than statically prerendered.
 export const dynamic = "force-dynamic";
+
+export function generateMetadata(): Metadata {
+  return { title: "Anomalies · Energy Anomaly Detection" };
+}
 
 export default async function AnomaliesPage({
   searchParams,
@@ -28,7 +34,7 @@ export default async function AnomaliesPage({
       </div>
 
       {rows.length === 0 ? (
-        <div className="mt-6 rounded-lg border border-black/10 bg-white p-10 text-center dark:border-white/15 dark:bg-black/20">
+        <div className={`mt-6 ${CARD} p-10 text-center`}>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             No anomalies match the current filters.
           </p>

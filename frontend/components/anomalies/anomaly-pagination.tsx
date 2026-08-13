@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { buildAnomaliesHref, type AnomalyQueryState } from "@/lib/anomaly-query";
+import { PILL_BUTTON } from "@/lib/format";
 
-const NAV_BUTTON =
-  "rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors dark:border-white/[.145]";
+const NAV_BUTTON = `${PILL_BUTTON} py-1.5`;
 
 export function AnomalyPagination({
   query,

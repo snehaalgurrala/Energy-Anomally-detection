@@ -1,4 +1,5 @@
 import { getSummary } from "@/lib/api";
+import { CARD } from "@/lib/format";
 
 // This page must always reflect the latest results, so it renders per
 // request instead of being statically prerendered at build time.
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-white p-5 dark:border-white/15 dark:bg-black/20">
+    <div className={`${CARD} p-5`}>
       <p className="text-sm text-zinc-500 dark:text-zinc-400">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
     </div>

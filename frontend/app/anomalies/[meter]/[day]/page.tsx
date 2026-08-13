@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApiError, getAnomalyDetail, getMeterHistory } from "@/lib/api";
-import { formatDay } from "@/lib/format";
+import { CARD, formatDay } from "@/lib/format";
 import { AnomalyDetail } from "@/components/anomalies/anomaly-detail";
 import { MeterHistoryChart } from "@/components/anomalies/meter-history-chart";
 import { MeterHistoryTable } from "@/components/anomalies/meter-history-table";
@@ -9,6 +10,15 @@ import { MeterHistoryTable } from "@/components/anomalies/meter-history-table";
 // Detail depends on the specific meter/day in the URL, so this route is
 // always rendered per request rather than statically prerendered.
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ meter: string; day: string }>;
+}): Promise<Metadata> {
+  const { meter, day } = await params;
+  return { title: `${meter} · ${formatDay(day)} · Energy Anomaly Detection` };
+}
 
 export default async function AnomalyDetailPage({
   params,
@@ -51,7 +61,7 @@ export default async function AnomalyDetailPage({
       </div>
 
       {historyError ? (
-        <div className="mt-10 rounded-lg border border-black/10 bg-white p-6 text-sm text-zinc-500 dark:border-white/15 dark:bg-black/20 dark:text-zinc-400">
+        <div className={`mt-10 ${CARD} p-6 text-sm text-zinc-500 dark:text-zinc-400`}>
           Could not load meter history: {historyError}
         </div>
       ) : (
@@ -61,7 +71,7 @@ export default async function AnomalyDetailPage({
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Actual vs. expected consumption for {meter}, with the selected date and anomalies marked.
             </p>
-            <div className="mt-4 rounded-lg border border-black/10 bg-white p-4 dark:border-white/15 dark:bg-black/20">
+            <div className={`mt-4 ${CARD} p-4`}>
               <MeterHistoryChart rows={history ?? []} selectedDay={day} />
             </div>
           </section>

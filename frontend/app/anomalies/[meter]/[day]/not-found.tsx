@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PILL_BUTTON } from "@/lib/format";
 
 export default function NotFound() {
   return (
@@ -9,7 +10,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/anomalies"
-        className="mt-2 rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        className={`mt-2 ${PILL_BUTTON} py-2 hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]`}
       >
         Back to Anomalies
       </Link>

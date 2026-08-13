@@ -3,6 +3,7 @@
 import { useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { buildAnomaliesHref, type AnomalyQueryState } from "@/lib/anomaly-query";
+import { PILL_BUTTON } from "@/lib/format";
 import type { SortColumn } from "@/lib/types";
 
 const SORT_OPTIONS: { value: SortColumn; label: string }[] = [
@@ -116,7 +117,7 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        className={`${PILL_BUTTON} py-1.5 hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#1a1a1a]`}
       >
         {isPending ? "Applying…" : "Apply"}
       </button>
