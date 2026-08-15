@@ -229,3 +229,11 @@ export interface DailyFeatureListParams {
   page?: number;
   page_size?: number;
 }
+
+export interface AnomalyExplanationRequest {
+  question?: string;
+}
+
+export interface AnomalyExplanationResponse {
+  analysis: string;
+}

@@ -1,4 +1,6 @@
 import type {
+  AnomalyExplanationRequest,
+  AnomalyExplanationResponse,
   AnomalyListParams,
   AnomalyListResponse,
   AnomalyMonthlyTrendResponse,
@@ -29,14 +31,14 @@ export class ApiError extends Error {
   }
 }
 
-async function apiFetch<T>(path: string): Promise<T> {
+async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!API_BASE_URL) {
     throw new ApiError("NEXT_PUBLIC_API_URL is not configured.");
   }
 
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store" });
+    res = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store", ...init });
   } catch {
     throw new ApiError(`Could not reach the API at ${API_BASE_URL}.`);
   }
@@ -78,6 +80,21 @@ export function getMeterHistory(meter: string): Promise<AnomalyRecord[]> {
 export function getAnomalyDetail(meter: string, day: string): Promise<AnomalyRecord> {
   return apiFetch<AnomalyRecord>(
     `/api/anomalies/${encodeURIComponent(meter)}/${encodeURIComponent(day)}`,
+  );
+}
+
+export function explainAnomaly(
+  meter: string,
+  day: string,
+  request: AnomalyExplanationRequest = {},
+): Promise<AnomalyExplanationResponse> {
+  return apiFetch<AnomalyExplanationResponse>(
+    `/api/ai/anomalies/${encodeURIComponent(meter)}/${encodeURIComponent(day)}/explain`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
   );
 }
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ApiError, getAnomalyDetail, getMeterHistory } from "@/lib/api";
 import { CARD, formatDay } from "@/lib/format";
+import { AiAnalystPanel } from "@/components/anomalies/ai-analyst-panel";
 import { AnomalyDetail } from "@/components/anomalies/anomaly-detail";
 import { MeterHistoryChart } from "@/components/anomalies/meter-history-chart";
 import { MeterHistoryTable } from "@/components/anomalies/meter-history-table";
@@ -59,6 +60,8 @@ export default async function AnomalyDetailPage({
       <div className="mt-6">
         <AnomalyDetail record={detail} />
       </div>
+
+      <AiAnalystPanel meter={meter} day={day} />
 
       {historyError ? (
         <div className={`mt-10 ${CARD} p-6 text-sm text-zinc-500 dark:text-zinc-400`}>
