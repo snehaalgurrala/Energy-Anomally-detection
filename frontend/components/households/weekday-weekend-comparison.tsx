@@ -7,16 +7,16 @@ function Bar({ label, value, max }: { label: string; value: number | null; max: 
   const pct = value !== null && max > 0 ? Math.max(4, (value / max) * 100) : 0;
   return (
     <div>
-      <div className="flex items-baseline justify-between text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="flex items-baseline justify-between text-xs text-foreground-muted">
         <span>{label}</span>
-        <span className="font-medium tabular-nums text-zinc-700 dark:text-zinc-200">
+        <span className="font-medium tabular-nums text-foreground">
           {formatNumber(value)} kWh
         </span>
       </div>
-      <div className="mt-1 h-2.5 w-full rounded-full bg-black/[.06] dark:bg-white/[.08]">
+      <div className="mt-1.5 h-2.5 w-full rounded-full bg-background">
         {value !== null && (
           <div
-            className="h-full rounded-full"
+            className="h-full rounded-full transition-[width] duration-300"
             style={{ width: `${pct}%`, backgroundColor: "var(--chart-actual)" }}
           />
         )}
@@ -51,13 +51,13 @@ export function WeekdayWeekendComparison({
 
   return (
     <div className={`${CARD} p-5`}>
-      {title && <h3 className="text-sm font-semibold">{title}</h3>}
-      {description && <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{description}</p>}
+      {title && <h3 className="text-sm font-semibold text-foreground">{title}</h3>}
+      {description && <p className="mt-0.5 text-xs text-foreground-muted">{description}</p>}
       <div className="mt-4 flex flex-col gap-4">
         <Bar label="Weekday average" value={weekdayAvg} max={max} />
         <Bar label="Weekend average" value={weekendAvg} max={max} />
       </div>
-      {deltaText && <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">{deltaText}</p>}
+      {deltaText && <p className="mt-4 text-xs text-foreground-muted">{deltaText}</p>}
     </div>
   );
 }

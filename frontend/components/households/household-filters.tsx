@@ -3,7 +3,7 @@
 import { useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { buildHouseholdsHref, type HouseholdQueryState } from "@/lib/household-query";
-import { FIELD, LABEL, PILL_BUTTON } from "@/lib/format";
+import { CARD, FIELD, LABEL, PILL_BUTTON_PRIMARY } from "@/lib/format";
 import type { HouseholdSortColumn } from "@/lib/types";
 
 const SORT_OPTIONS: { value: HouseholdSortColumn; label: string }[] = [
@@ -47,9 +47,7 @@ export function HouseholdFilters({ query }: { query: HouseholdQueryState }) {
       key={`${query.stdorToU}|${query.Acorn_grouped}|${query.sort_by}|${query.ascending}|${query.page_size}`}
       onSubmit={handleSubmit}
       aria-busy={isPending}
-      className={`flex flex-wrap items-end gap-3 rounded-lg border border-black/10 bg-white p-4 transition-opacity dark:border-white/15 dark:bg-black/20 ${
-        isPending ? "opacity-60" : ""
-      }`}
+      className={`flex flex-wrap items-end gap-3 ${CARD} p-4 transition-opacity ${isPending ? "opacity-60" : ""}`}
     >
       <label className={LABEL}>
         Tariff
@@ -102,11 +100,7 @@ export function HouseholdFilters({ query }: { query: HouseholdQueryState }) {
         </select>
       </label>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className={`${PILL_BUTTON} py-1.5 hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-[#1a1a1a]`}
-      >
+      <button type="submit" disabled={isPending} className={`${PILL_BUTTON_PRIMARY} py-1.5`}>
         {isPending ? "Applying…" : "Apply"}
       </button>
     </form>

@@ -238,10 +238,23 @@ export interface AnomalyExplanationResponse {
   analysis: string;
 }
 
-export interface DashboardExplanationRequest {
+export interface HouseholdExplanationRequest {
   question?: string;
 }
 
-export interface DashboardExplanationResponse {
+export interface HouseholdExplanationResponse {
   analysis: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+}
+
+export interface ChatResponse {
+  message: string;
 }

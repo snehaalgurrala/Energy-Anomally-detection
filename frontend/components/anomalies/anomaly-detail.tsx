@@ -9,7 +9,7 @@ export function AnomalyDetail({ record }: { record: AnomalyRecord }) {
         <AnomalyStatusBadge status={record.anomaly_status} />
         <AnomalyTypeBadge type={record.anomaly_type} />
         {record.confidence && (
-          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+          <span className="text-xs text-foreground-muted">
             Confidence: {record.confidence}
           </span>
         )}

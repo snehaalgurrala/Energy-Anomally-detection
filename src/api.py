@@ -55,10 +55,18 @@ from src.results_store import (  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ai.anomaly_context import SYSTEM_PROMPT, build_anomaly_explanation_context  # noqa: E402
+from ai.chat_context import (  # noqa: E402
+    SYSTEM_PROMPT as CHAT_SYSTEM_PROMPT,
+    build_chat_user_prompt,
+)
 from ai.dashboard_context import (  # noqa: E402
     SYSTEM_PROMPT as DASHBOARD_SYSTEM_PROMPT,
     TOP_HIGH_ANOMALY_HOUSEHOLDS,
     build_dashboard_context,
+)
+from ai.household_context import (  # noqa: E402
+    SYSTEM_PROMPT as HOUSEHOLD_SYSTEM_PROMPT,
+    build_household_explanation_context,
 )
 from ai.llm_client import (  # noqa: E402
     LlmConfigurationError,
@@ -309,12 +317,33 @@ class AnomalyExplanationResponse(BaseModel):
     analysis: str
 
 
+class HouseholdExplanationRequest(BaseModel):
+    question: str | None = None
+
+
+class HouseholdExplanationResponse(BaseModel):
+    analysis: str
+
+
 class DashboardExplanationRequest(BaseModel):
     question: str | None = None
 
 
 class DashboardExplanationResponse(BaseModel):
     analysis: str
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+class ChatResponse(BaseModel):
+    message: str
 
 
 class HouseholdDatasetSummaryResponse(BaseModel):
@@ -644,6 +673,39 @@ def household_daily(
     )
 
 
+DEFAULT_HOUSEHOLD_EXPLANATION_QUESTION = (
+    "Explain this household's consumption profile using the supplied data. Summarize its "
+    "overall usage level, variability, and weekday/weekend pattern."
+)
+
+
+@app.post("/api/ai/households/{meter}/explain", response_model=HouseholdExplanationResponse)
+def household_explain(
+    meter: str,
+    request: HouseholdExplanationRequest = HouseholdExplanationRequest(),
+) -> HouseholdExplanationResponse:
+    try:
+        context = build_household_explanation_context(
+            meter, _household_cache["household_df"], _household_cache["daily_df"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    question = request.question or DEFAULT_HOUSEHOLD_EXPLANATION_QUESTION
+    user_prompt = f"Context:\n{json.dumps(context)}\n\nQuestion: {question}"
+
+    try:
+        analysis = complete(HOUSEHOLD_SYSTEM_PROMPT, user_prompt)
+    except LlmConfigurationError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except LlmTimeoutError as e:
+        raise HTTPException(status_code=504, detail=str(e))
+    except (LlmRequestError, LlmResponseError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return HouseholdExplanationResponse(analysis=analysis)
+
+
 # --- Dashboard AI (read-only synthesis over the cached anomaly and household
 # aggregates built above; no new aggregation) -------------------------------
 
@@ -653,14 +715,14 @@ DEFAULT_DASHBOARD_QUESTION = (
 )
 
 
-@app.post("/api/ai/dashboard/explain", response_model=DashboardExplanationResponse)
-def dashboard_explain(
-    request: DashboardExplanationRequest = DashboardExplanationRequest(),
-) -> DashboardExplanationResponse:
+# Shared by /api/ai/dashboard/explain and /api/ai/chat -- both ground their
+# answers in the same dashboard-level context, built the same way, so this
+# assembly lives in one place rather than being duplicated per endpoint.
+def _build_dashboard_ai_context() -> dict:
     top_households_df = _anomaly_cache["household_rollup_df"].sort_values(
         "anomaly_count", ascending=False
     )
-    context = build_dashboard_context(
+    return build_dashboard_context(
         summary=get_summary(),
         monthly_trend_rows=[r.model_dump(mode="json") for r in _anomaly_cache["monthly_trend"].rows],
         segment_summary=_anomaly_cache["segments"].model_dump(mode="json"),
@@ -670,6 +732,13 @@ def dashboard_explain(
         ],
         household_dataset_summary=_household_cache["summary"].model_dump(mode="json"),
     )
+
+
+@app.post("/api/ai/dashboard/explain", response_model=DashboardExplanationResponse)
+def dashboard_explain(
+    request: DashboardExplanationRequest = DashboardExplanationRequest(),
+) -> DashboardExplanationResponse:
+    context = _build_dashboard_ai_context()
 
     question = request.question or DEFAULT_DASHBOARD_QUESTION
     user_prompt = f"Context:\n{json.dumps(context)}\n\nQuestion: {question}"
@@ -684,3 +753,33 @@ def dashboard_explain(
         raise HTTPException(status_code=502, detail=str(e))
 
     return DashboardExplanationResponse(analysis=analysis)
+
+
+# Caps how much conversation history gets sent to the model per request --
+# the frontend keeps the full transcript client-side, but only the most
+# recent turns are needed to resolve follow-up references, and capping keeps
+# prompt size (and cost) bounded on long conversations.
+MAX_CHAT_HISTORY_MESSAGES = 20
+
+
+@app.post("/api/ai/chat", response_model=ChatResponse)
+def ai_chat(request: ChatRequest) -> ChatResponse:
+    if not request.messages:
+        raise HTTPException(status_code=400, detail="messages must not be empty.")
+    if request.messages[-1].role != "user":
+        raise HTTPException(status_code=400, detail="The last message must be from the user.")
+
+    context = _build_dashboard_ai_context()
+    history = request.messages[-MAX_CHAT_HISTORY_MESSAGES:]
+    user_prompt = build_chat_user_prompt(context, [m.model_dump() for m in history])
+
+    try:
+        reply = complete(CHAT_SYSTEM_PROMPT, user_prompt)
+    except LlmConfigurationError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except LlmTimeoutError as e:
+        raise HTTPException(status_code=504, detail=str(e))
+    except (LlmRequestError, LlmResponseError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return ChatResponse(message=reply)

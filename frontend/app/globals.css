@@ -1,32 +1,146 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------
+   Energy Intelligence design system
+   -----------------------------------------------------------------
+   A single, committed dark theme -- deep navy surfaces with an electric
+   magenta/pink accent -- rather than a light/dark toggle. All shared UI
+   (lib/format.tsx primitives, layout, components) draws from these
+   tokens so the visual language stays consistent as new dashboard
+   surfaces are added on top of it.
+   --------------------------------------------------------------------- */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* Primary line color for the meter-history chart's actual-consumption
-     series -- kept distinct in lightness from the Drop anomaly-type color
-     (see ANOMALY_TYPE_COLOR in lib/format.tsx) so an overlapping Drop
-     marker never reads as part of the line. */
-  --chart-actual: #1d4ed8;
+  /* Navy scale -- app background through elevated surfaces to text. */
+  --navy-950: #05070d;
+  --navy-900: #0a0d17;
+  --navy-850: #0d1120;
+  --navy-800: #12162a;
+  --navy-700: #1a1f38;
+  --navy-600: #242a49;
+  --navy-500: #323a5e;
+  --navy-400: #4c5578;
+  --navy-300: #6c7599;
+  --navy-200: #9aa3c2;
+  --navy-100: #c8cee2;
+  --navy-50: #f2f4fb;
+
+  /* Electric magenta/pink accent. */
+  --accent-300: #ff8fca;
+  --accent-400: #ff5cae;
+  --accent-500: #ff2e92;
+  --accent-600: #e0157a;
+  --accent-700: #b10f61;
+
+  /* Restrained semantic colors, tuned for readability on navy. */
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.14);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.14);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.14);
+  --info: #60a5fa;
+  --info-soft: rgba(96, 165, 250, 0.14);
+
+  /* Dedicated "Drop" anomaly-type color -- a violet, deliberately not blue
+     (that's --chart-actual/--chart-expected's territory, see below) and not
+     --info (also blue), so a Drop marker never blends into the consumption
+     lines it's plotted against. */
+  --drop: #a78bfa;
+  --drop-soft: rgba(167, 139, 250, 0.14);
+
+  /* Semantic aliases used throughout the app. */
+  --background: var(--navy-900);
+  --surface: var(--navy-800);
+  --surface-hover: var(--navy-700);
+  --surface-active: var(--navy-600);
+  --border: var(--navy-600);
+  --border-strong: var(--navy-500);
+  --foreground: var(--navy-50);
+  --foreground-muted: var(--navy-200);
+  --foreground-subtle: var(--navy-300);
+
+  --accent: var(--accent-500);
+  --accent-hover: var(--accent-400);
+  --accent-active: var(--accent-600);
+  --accent-soft: rgba(255, 46, 146, 0.12);
+  --accent-border: rgba(255, 46, 146, 0.35);
+
+  /* Primary line color for consumption charts (meter history, household
+     daily/monthly trend) -- a distinct blue so it never gets confused
+     with the magenta accent or (now that Drop is violet, not blue) the
+     Drop anomaly-type color. */
+  --chart-actual: #5aa9ff;
+  --chart-expected: #7b86ac;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-subtle: var(--foreground-subtle);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-border: var(--accent-border);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-drop: var(--drop);
+  --color-drop-soft: var(--drop-soft);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --chart-actual: #60a5fa;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+/* Text selection and scrollbars pick up the brand accent instead of the
+   browser default, so the theme feels intentional down to the details. */
+::selection {
+  background: var(--accent-soft);
+  color: var(--foreground);
+}
+
+* {
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border-strong);
+  border-radius: 9999px;
+  border: 2px solid var(--background);
+}
+
+/* Default focus-visible ring used by any element that doesn't opt into a
+   more specific one (buttons/inputs define their own accent ring inline
+   via lib/format.tsx so they can combine it with other utilities). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

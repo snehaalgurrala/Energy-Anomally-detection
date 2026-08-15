@@ -3,7 +3,7 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { TooltipContentProps } from "recharts";
 import type { HouseholdMonthlyTrendRecord } from "@/lib/types";
-import { formatMonth, formatNumber } from "@/lib/format";
+import { CHART_AXIS_TICK, CHART_CURSOR_LINE, CHART_GRID_STROKE, CHART_TOOLTIP, formatMonth, formatNumber } from "@/lib/format";
 
 // Same "consumption" identity color used by the anomaly chart's actual-usage
 // line and the per-household daily chart, so consumption reads consistently
@@ -14,12 +14,12 @@ function renderTooltip({ active, payload }: TooltipContentProps) {
   const point = active ? (payload?.[0]?.payload as HouseholdMonthlyTrendRecord | undefined) : undefined;
   if (!point) return null;
   return (
-    <div className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs shadow-sm dark:border-white/15 dark:bg-zinc-900">
-      <p className="font-medium">{formatMonth(point.month)}</p>
-      <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+    <div className={CHART_TOOLTIP}>
+      <p className="font-medium text-foreground">{formatMonth(point.month)}</p>
+      <p className="mt-1 text-foreground-muted">
         Avg daily consumption: {formatNumber(point.average_daily_consumption)} kWh
       </p>
-      <p className="text-zinc-500 dark:text-zinc-400">
+      <p className="text-foreground-subtle">
         Based on {point.household_day_count.toLocaleString()} household-days
       </p>
     </div>
@@ -34,21 +34,21 @@ export function HouseholdMonthlyTrendChart({ rows }: { rows: HouseholdMonthlyTre
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={rows} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
-        <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-black/10 dark:stroke-white/10" />
+        <CartesianGrid vertical={false} strokeDasharray="3 3" className={CHART_GRID_STROKE} />
         <XAxis
           dataKey="month"
           tickFormatter={formatMonth}
           interval={tickInterval}
           tick={{ fontSize: 11 }}
-          className="fill-zinc-500 dark:fill-zinc-400"
+          className={CHART_AXIS_TICK}
         />
         <YAxis
           tick={{ fontSize: 11 }}
           width={56}
           tickFormatter={(v: number) => formatNumber(v)}
-          className="fill-zinc-500 dark:fill-zinc-400"
+          className={CHART_AXIS_TICK}
         />
-        <Tooltip content={renderTooltip} />
+        <Tooltip content={renderTooltip} cursor={CHART_CURSOR_LINE} />
         <Line
           type="monotone"
           dataKey="average_daily_consumption"
@@ -56,6 +56,7 @@ export function HouseholdMonthlyTrendChart({ rows }: { rows: HouseholdMonthlyTre
           stroke={ACTUAL}
           strokeWidth={2}
           dot={false}
+          activeDot={{ r: 4, fill: "var(--accent)", stroke: "var(--background)", strokeWidth: 2 }}
           connectNulls={false}
           isAnimationActive={false}
         />

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { AnomalyRecord } from "@/lib/types";
 import {
-  CARD,
   PILL_BUTTON,
   formatDay,
   formatNumber,
@@ -12,6 +11,7 @@ import {
   AnomalyStatusBadge,
   ANOMALY_TYPE_BORDER,
 } from "@/lib/format";
+import { EmptyState } from "@/components/empty-state";
 
 // Meter histories can run to hundreds of rows, so the table is paginated
 // client-side over the already-fetched history array (no extra requests).
@@ -31,11 +31,7 @@ export function MeterHistoryTable({
   const [page, setPage] = useState(selectedIndex >= 0 ? Math.floor(selectedIndex / PAGE_SIZE) + 1 : 1);
 
   if (rows.length === 0) {
-    return (
-      <div className={`${CARD} p-6 text-center text-sm text-zinc-500 dark:text-zinc-400`}>
-        No history available for this meter.
-      </div>
-    );
+    return <EmptyState message="No history available for this meter." />;
   }
 
   const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -44,10 +40,10 @@ export function MeterHistoryTable({
 
   return (
     <div>
-      <div className="overflow-x-auto rounded-lg border border-black/10 dark:border-white/15">
+      <div className="overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[760px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-black/10 bg-black/[.02] text-left text-xs font-medium text-zinc-500 dark:border-white/15 dark:bg-white/[.03] dark:text-zinc-400">
+            <tr className="border-b border-border bg-surface text-left text-xs font-medium uppercase tracking-wide text-foreground-subtle">
               <th className="px-4 py-2.5 font-medium">Date</th>
               <th className="px-4 py-2.5 font-medium text-right">Energy (kWh)</th>
               <th className="px-4 py-2.5 font-medium text-right">Expected (kWh)</th>
@@ -67,24 +63,24 @@ export function MeterHistoryTable({
                 <tr
                   key={row.day}
                   aria-current={isSelected ? "true" : undefined}
-                  className={`border-b border-l-4 border-black/5 ${border} last:border-b-0 dark:border-white/10 ${
-                    isSelected ? "bg-black/[.05] dark:bg-white/[.08]" : ""
+                  className={`border-b border-l-4 border-border ${border} last:border-b-0 ${
+                    isSelected ? "bg-surface-hover" : ""
                   }`}
                 >
-                  <td className="px-4 py-2.5 whitespace-nowrap font-medium tabular-nums">
+                  <td className="px-4 py-2.5 whitespace-nowrap font-medium tabular-nums text-foreground">
                     {formatDay(row.day)}
                     {isSelected && (
-                      <span className="ml-2 rounded-full bg-black/10 px-2 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-white/15 dark:text-zinc-300">
+                      <span className="ml-2 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent-hover ring-1 ring-inset ring-accent-border">
                         Selected
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{formatNumber(row.energy_sum)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">
+                  <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{formatNumber(row.energy_sum)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                     {formatNumber(row.expected_consumption)}
                   </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{formatNumber(row.deviation)}</td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">{formatEvidence(row.hybrid_score)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{formatNumber(row.deviation)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{formatEvidence(row.hybrid_score)}</td>
                   <td className="px-4 py-2.5">
                     <AnomalyStatusBadge status={row.anomaly_status} />
                   </td>
@@ -99,7 +95,7 @@ export function MeterHistoryTable({
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-sm text-foreground-muted">
           Showing <span className="tabular-nums">{(start + 1).toLocaleString()}</span>–
           <span className="tabular-nums">{Math.min(start + PAGE_SIZE, rows.length).toLocaleString()}</span> of{" "}
           <span className="tabular-nums">{rows.length.toLocaleString()}</span> records · page{" "}
@@ -110,7 +106,7 @@ export function MeterHistoryTable({
             type="button"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
-            className={`${NAV_BUTTON} hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#1a1a1a]`}
+            className={NAV_BUTTON}
           >
             Previous
           </button>
@@ -118,7 +114,7 @@ export function MeterHistoryTable({
             type="button"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => p + 1)}
-            className={`${NAV_BUTTON} hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#1a1a1a]`}
+            className={NAV_BUTTON}
           >
             Next
           </button>

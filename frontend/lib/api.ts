@@ -6,14 +6,16 @@ import type {
   AnomalyMonthlyTrendResponse,
   AnomalyRecord,
   AnomalySegmentSummaryResponse,
+  ChatRequest,
+  ChatResponse,
   DailyFeatureListParams,
   DailyFeatureListResponse,
   DailyFeatureRecord,
-  DashboardExplanationRequest,
-  DashboardExplanationResponse,
   HighAnomalyHouseholdListParams,
   HighAnomalyHouseholdListResponse,
   HouseholdDatasetSummaryResponse,
+  HouseholdExplanationRequest,
+  HouseholdExplanationResponse,
   HouseholdListParams,
   HouseholdListResponse,
   HouseholdMonthlyTrendResponse,
@@ -100,10 +102,8 @@ export function explainAnomaly(
   );
 }
 
-export function explainDashboard(
-  request: DashboardExplanationRequest = {},
-): Promise<DashboardExplanationResponse> {
-  return apiFetch<DashboardExplanationResponse>("/api/ai/dashboard/explain", {
+export function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
+  return apiFetch<ChatResponse>("/api/ai/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
@@ -138,6 +138,20 @@ export function getHouseholds(params: HouseholdListParams = {}): Promise<Househo
 
 export function getHouseholdDetail(meter: string): Promise<HouseholdSummaryRecord> {
   return apiFetch<HouseholdSummaryRecord>(`/api/households/${encodeURIComponent(meter)}`);
+}
+
+export function explainHousehold(
+  meter: string,
+  request: HouseholdExplanationRequest = {},
+): Promise<HouseholdExplanationResponse> {
+  return apiFetch<HouseholdExplanationResponse>(
+    `/api/ai/households/${encodeURIComponent(meter)}/explain`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    },
+  );
 }
 
 export function getHouseholdDaily(

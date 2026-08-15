@@ -14,10 +14,10 @@ export function HighAnomalyHouseholdTable({ rows }: { rows: HighAnomalyHousehold
   const currentQuery = useSearchParams().toString();
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-black/10 dark:border-white/15">
+    <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[900px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-black/10 bg-black/[.02] text-left text-xs font-medium text-zinc-500 dark:border-white/15 dark:bg-white/[.03] dark:text-zinc-400">
+          <tr className="border-b border-border bg-surface text-left text-xs font-medium uppercase tracking-wide text-foreground-subtle">
             <th className="px-4 py-2.5 font-medium">Meter</th>
             <th className="px-4 py-2.5 font-medium text-right">Anomalies</th>
             <th className="px-4 py-2.5 font-medium text-right">Spikes</th>
@@ -42,27 +42,27 @@ export function HighAnomalyHouseholdTable({ rows }: { rows: HighAnomalyHousehold
               <tr
                 key={row.LCLid}
                 onClick={handleRowClick}
-                className="cursor-pointer border-b border-black/5 last:border-b-0 hover:bg-black/[.03] dark:border-white/10 dark:hover:bg-white/[.05]"
+                className="cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-hover"
               >
-                <td className="px-4 py-2.5 font-medium tabular-nums">
+                <td className="px-4 py-2.5 font-medium tabular-nums text-foreground">
                   <Link
                     href={href}
-                    className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
+                    className="rounded-sm focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     {row.LCLid}
                   </Link>
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{row.anomaly_count.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{row.spike_count.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{row.drop_count.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{row.anomaly_count.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{row.spike_count.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{row.drop_count.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.anomaly_rate_pct)}%
                 </td>
-                <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
+                <td className="px-4 py-2.5 whitespace-nowrap tabular-nums text-foreground">
                   {formatDay(row.latest_anomaly_date)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{formatNumber(row.avg_hybrid_score)}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">{formatNumber(row.max_hybrid_score)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{formatNumber(row.avg_hybrid_score)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{formatNumber(row.max_hybrid_score)}</td>
               </tr>
             );
           })}

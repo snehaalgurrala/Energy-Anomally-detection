@@ -14,6 +14,7 @@ import { HighAnomalyHouseholdControls } from "@/components/anomalies/high-anomal
 import { HighAnomalyHouseholdTable } from "@/components/anomalies/high-anomaly-household-table";
 import { HighAnomalyHouseholdPagination } from "@/components/anomalies/high-anomaly-household-pagination";
 import { SegmentationChart, type SegmentBar } from "@/components/segmentation-chart";
+import { EmptyState } from "@/components/empty-state";
 import type { AnomalySegmentRecord } from "@/lib/types";
 
 // Anomaly counts and filters depend on the current URL query, so this route
@@ -56,15 +57,15 @@ export default async function AnomaliesPage({
   const { rows, total, page, page_size } = explorer;
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Anomaly Explorer</h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 sm:py-16">
+      <h1 className="text-3xl font-semibold tracking-tight text-foreground">Anomaly Explorer</h1>
+      <p className="mt-1.5 text-sm text-foreground-muted">
         Detected anomalies from the hybrid statistical / Isolation Forest detector.
       </p>
 
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold tracking-tight">Anomaly Activity Over Time</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Anomaly Activity Over Time</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Spike and Drop counts per calendar month, across all {monthlyTrend.rows.reduce((n, r) => n + r.anomaly_count, 0).toLocaleString()}{" "}
           detected anomalies.
         </p>
@@ -74,14 +75,14 @@ export default async function AnomaliesPage({
       </section>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold tracking-tight">Anomaly Distribution by Segment</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Anomaly Distribution by Segment</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Observed anomaly rate by household segment -- anomaly count divided by that segment&apos;s
           eligible readings, not a causal effect of ACORN or tariff on anomaly likelihood.
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className={`${CARD} p-4`}>
-            <h3 className="text-sm font-semibold">By ACORN group</h3>
+            <h3 className="text-sm font-semibold text-foreground">By ACORN group</h3>
             <SegmentationChart
               data={toSegmentBars(segments.by_acorn_group)}
               order={ACORN_GROUP_ORDER}
@@ -90,7 +91,7 @@ export default async function AnomaliesPage({
             />
           </div>
           <div className={`${CARD} p-4`}>
-            <h3 className="text-sm font-semibold">By tariff</h3>
+            <h3 className="text-sm font-semibold text-foreground">By tariff</h3>
             <SegmentationChart
               data={toSegmentBars(segments.by_tariff)}
               order={TARIFF_ORDER}
@@ -102,8 +103,8 @@ export default async function AnomaliesPage({
       </section>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold tracking-tight">Households with Notable Anomaly Activity</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Households with Notable Anomaly Activity</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Meters with at least one detected anomaly, ranked by activity -- a starting point for
           investigating specific households.
         </p>
@@ -111,8 +112,8 @@ export default async function AnomaliesPage({
           <HighAnomalyHouseholdControls query={hhQuery} />
         </div>
         {highAnomalyHouseholds.rows.length === 0 ? (
-          <div className={`mt-6 ${CARD} p-10 text-center`}>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No households match.</p>
+          <div className="mt-6">
+            <EmptyState message="No households match." />
           </div>
         ) : (
           <>
@@ -129,17 +130,15 @@ export default async function AnomaliesPage({
         )}
       </section>
 
-      <h2 className="mt-12 text-lg font-semibold tracking-tight">Anomaly List</h2>
+      <h2 className="mt-12 text-lg font-semibold tracking-tight text-foreground">Anomaly List</h2>
 
       <div className="mt-4">
         <AnomalyFilters query={query} />
       </div>
 
       {rows.length === 0 ? (
-        <div className={`mt-6 ${CARD} p-10 text-center`}>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            No anomalies match the current filters.
-          </p>
+        <div className="mt-6">
+          <EmptyState message="No anomalies match the current filters." />
         </div>
       ) : (
         <>

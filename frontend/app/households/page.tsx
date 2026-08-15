@@ -9,6 +9,8 @@ import { HouseholdPagination } from "@/components/households/household-paginatio
 import { HouseholdMonthlyTrendChart } from "@/components/households/household-monthly-trend-chart";
 import { WeekdayWeekendComparison } from "@/components/households/weekday-weekend-comparison";
 import { SegmentationChart, type SegmentBar } from "@/components/segmentation-chart";
+import { EmptyState } from "@/components/empty-state";
+import { StatCard } from "@/components/stat-card";
 
 // Household counts and filters depend on the current URL query, so this
 // route is always rendered per request rather than statically prerendered.
@@ -22,15 +24,6 @@ const TARIFF_ORDER = ["Std", "ToU"];
 
 export function generateMetadata(): Metadata {
   return { title: "Households · Energy Anomaly Detection" };
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className={`${CARD} p-5`}>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-    </div>
-  );
 }
 
 export default async function HouseholdsPage({
@@ -82,9 +75,9 @@ export default async function HouseholdsPage({
   const tariffData = toSegmentBars(groupHouseholdsBy(allHouseholds.rows, "stdorToU"));
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-16">
-      <h1 className="text-2xl font-semibold tracking-tight">Household Intelligence</h1>
-      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+    <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-12 sm:py-16">
+      <h1 className="text-3xl font-semibold tracking-tight text-foreground">Household Intelligence</h1>
+      <p className="mt-1.5 text-sm text-foreground-muted">
         Dataset overview and per-household consumption metrics.
       </p>
 
@@ -95,8 +88,8 @@ export default async function HouseholdsPage({
       </div>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold tracking-tight">Consumption Overview</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Consumption Overview</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Average daily consumption per household, by calendar month, across all {summary.total_meters}{" "}
           households.
         </p>
@@ -106,8 +99,8 @@ export default async function HouseholdsPage({
       </section>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold tracking-tight">Weekday vs Weekend</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Weekday vs Weekend</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           Dataset-wide average of each household&apos;s own weekday/weekend consumption.
         </p>
         <div className="mt-4">
@@ -120,8 +113,8 @@ export default async function HouseholdsPage({
       </section>
 
       <section className="mt-12">
-        <h2 className="text-lg font-semibold tracking-tight">Segmentation Intelligence</h2>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+        <h2 className="text-lg font-semibold tracking-tight text-foreground">Segmentation Intelligence</h2>
+        <p className="mt-1 text-sm text-foreground-muted">
           How average consumption differs by ACORN classification and tariff type. This is a
           demographic/behavioral comparison, independent of anomaly detection -- a difference here
           reflects the segment&apos;s typical usage pattern, not a causal effect of ACORN or tariff on
@@ -129,7 +122,7 @@ export default async function HouseholdsPage({
         </p>
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className={`${CARD} p-4`}>
-            <h3 className="text-sm font-semibold">By ACORN group</h3>
+            <h3 className="text-sm font-semibold text-foreground">By ACORN group</h3>
             <SegmentationChart
               data={acornData}
               order={ACORN_GROUP_ORDER}
@@ -137,7 +130,7 @@ export default async function HouseholdsPage({
             />
           </div>
           <div className={`${CARD} p-4`}>
-            <h3 className="text-sm font-semibold">By tariff</h3>
+            <h3 className="text-sm font-semibold text-foreground">By tariff</h3>
             <SegmentationChart
               data={tariffData}
               order={TARIFF_ORDER}
@@ -147,17 +140,15 @@ export default async function HouseholdsPage({
         </div>
       </section>
 
-      <h2 className="mt-12 text-lg font-semibold tracking-tight">Household Explorer</h2>
+      <h2 className="mt-12 text-lg font-semibold tracking-tight text-foreground">Household Explorer</h2>
 
       <div className="mt-4">
         <HouseholdFilters query={query} />
       </div>
 
       {rows.length === 0 ? (
-        <div className={`mt-6 ${CARD} p-10 text-center`}>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            No households match the current filters.
-          </p>
+        <div className="mt-6">
+          <EmptyState message="No households match the current filters." />
         </div>
       ) : (
         <>

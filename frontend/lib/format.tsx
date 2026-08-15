@@ -55,38 +55,75 @@ export function formatPercent(value: number | null): string {
 // components (cards, empty states, pill buttons) so the strings don't drift
 // out of sync across files. Callers append their own padding/hover/etc. on
 // top, since those vary by usage.
-export const CARD = "rounded-lg border border-black/10 bg-white dark:border-white/15 dark:bg-black/20";
+export const CARD = "rounded-xl border border-border bg-surface shadow-sm shadow-black/20";
+
+// Base interaction/focus/disabled behavior shared by both button variants
+// below, so every button in the app dims, disables, and focuses the same way.
+const BUTTON_BASE =
+  "inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50";
+
+// Secondary/neutral action -- pagination, back links, retry buttons.
 export const PILL_BUTTON =
-  "rounded-full border border-black/[.08] px-4 text-sm font-medium transition-colors dark:border-white/[.145]";
+  `${BUTTON_BASE} border border-border bg-surface px-4 text-foreground hover:border-border-strong hover:bg-surface-hover`;
+
+// Primary/accent action -- the main call to action in a form or panel
+// (Apply, Ask, Summarize dashboard, Explain this anomaly).
+export const PILL_BUTTON_PRIMARY =
+  `${BUTTON_BASE} border border-transparent bg-accent px-4 text-white shadow-sm shadow-accent/30 hover:bg-accent-hover active:bg-accent-active`;
 
 // Shared filter-form field/label styling, reused across the anomaly and
 // household explorer filter forms so the two don't drift apart.
 export const FIELD =
-  "rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-sm dark:border-white/15 dark:bg-black/20";
-export const LABEL = "flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400";
+  "rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-foreground-subtle transition-colors focus-visible:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/40";
+export const LABEL =
+  "flex flex-col gap-1.5 text-xs font-medium uppercase tracking-wide text-foreground-subtle";
 
-// Slots 1 (blue) and 2 (orange) of the app's categorical palette, in fixed
-// order -- validated as CVD-safe adjacent to each other in both color modes.
-// Kept as raw hex so non-Tailwind consumers (e.g. chart SVG fills) can reuse
-// the exact same colors instead of redefining them.
+// Shared recharts chrome (tooltip card, gridlines, axis ticks), reused by
+// every chart so they all read as the same visual system.
+export const CHART_TOOLTIP =
+  "rounded-lg border border-border-strong bg-surface-hover/95 px-3 py-2 text-xs shadow-lg shadow-black/50 backdrop-blur-sm";
+export const CHART_GRID_STROKE = "stroke-border";
+export const CHART_AXIS_TICK = "fill-foreground-subtle";
+
+// Hover-state chrome shared by every recharts <Tooltip>: a subtle
+// accent-tinted cursor instead of recharts' default light-gray highlight
+// (which reads as a harsh white flash against the navy background).
+export const CHART_CURSOR_FILL = { fill: "var(--accent-soft)" };
+export const CHART_CURSOR_LINE = { stroke: "var(--accent)", strokeOpacity: 0.35, strokeWidth: 1 };
+// Subtle per-bar hover emphasis, shared by every <Bar> so hovering one
+// category doesn't repaint it a different hue -- just lifts it slightly.
+export const CHART_ACTIVE_BAR = { fillOpacity: 0.85, stroke: "var(--foreground)", strokeOpacity: 0.4, strokeWidth: 1 };
+
+// Spike uses the app's semantic "warning" token (a sudden increase reads as
+// "elevated"). Drop uses a dedicated --drop violet (see globals.css) rather
+// than --info/blue: the meter-history chart already plots two blue lines
+// (--chart-actual, --chart-expected), so a blue Drop marker sat on top of
+// them and blended in. Deliberately not danger/success either: those are
+// already used by AnomalyStatusBadge for the Anomaly/Normal status shown
+// right next to this badge (see anomaly-detail.tsx, meter-history-table.tsx),
+// so reusing them here would make two differently-meant badges look
+// identical. Every token here is tuned for contrast against navy (see
+// globals.css). Kept as CSS var() strings (not Tailwind classes) so
+// non-Tailwind consumers -- chart SVG fills -- can reuse the exact same
+// colors, same pattern as --chart-actual/--chart-expected.
 export const ANOMALY_TYPE_COLOR: Record<string, string> = {
-  Spike: "#eb6834",
-  Drop: "#2a78d6",
+  Spike: "var(--warning)",
+  Drop: "var(--drop)",
 };
 
 const ANOMALY_TYPE_STYLES: Record<string, string> = {
-  Spike: "bg-[#eb6834]/10 text-[#c14f22] dark:bg-[#d95926]/15 dark:text-[#ff9d6e]",
-  Drop: "bg-[#2a78d6]/10 text-[#1c5cab] dark:bg-[#3987e5]/15 dark:text-[#8ab8f5]",
+  Spike: "bg-warning-soft text-warning ring-1 ring-inset ring-warning/25",
+  Drop: "bg-drop-soft text-drop ring-1 ring-inset ring-drop/25",
 };
 
 export const ANOMALY_TYPE_BORDER: Record<string, string> = {
-  Spike: "border-l-[#eb6834] dark:border-l-[#d95926]",
-  Drop: "border-l-[#2a78d6] dark:border-l-[#3987e5]",
+  Spike: "border-l-warning",
+  Drop: "border-l-drop",
 };
 
 export function AnomalyTypeBadge({ type }: { type: string | null }) {
-  if (!type) return <span className="text-zinc-400 dark:text-zinc-500">—</span>;
-  const style = ANOMALY_TYPE_STYLES[type] ?? "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300";
+  if (!type) return <span className="text-foreground-subtle">—</span>;
+  const style = ANOMALY_TYPE_STYLES[type] ?? "bg-border text-foreground-muted ring-1 ring-inset ring-border-strong";
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${style}`}>
       {type}
@@ -95,13 +132,13 @@ export function AnomalyTypeBadge({ type }: { type: string | null }) {
 }
 
 const ANOMALY_STATUS_STYLES: Record<string, string> = {
-  Anomaly: "bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400",
-  Normal: "bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400",
+  Anomaly: "bg-danger-soft text-danger ring-1 ring-inset ring-danger/25",
+  Normal: "bg-success-soft text-success ring-1 ring-inset ring-success/25",
 };
 
 export function AnomalyStatusBadge({ status }: { status: string | null }) {
-  if (!status) return <span className="text-zinc-400 dark:text-zinc-500">—</span>;
-  const style = ANOMALY_STATUS_STYLES[status] ?? "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300";
+  if (!status) return <span className="text-foreground-subtle">—</span>;
+  const style = ANOMALY_STATUS_STYLES[status] ?? "bg-border text-foreground-muted ring-1 ring-inset ring-border-strong";
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${style}`}>
       {status}
@@ -109,9 +146,11 @@ export function AnomalyStatusBadge({ status }: { status: string | null }) {
   );
 }
 
-// Slots 3-7 of the same categorical palette ANOMALY_TYPE_COLOR draws slots
-// 1-2 from (aqua, yellow, magenta, green, violet) -- deliberately skipping
-// the blue/orange anomaly slots so segmentation charts are never confusable
-// with anomaly Spike/Drop colors. Assigned in this fixed order to whichever
-// segment labels a chart renders, never reassigned based on the current filter.
-export const SEGMENT_COLOR = ["#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7"];
+// A 5-slot categorical palette for segmentation charts (ACORN group, tariff),
+// deliberately distinct from the warning/info hues ANOMALY_TYPE_COLOR uses
+// for Spike/Drop and from the danger/success hues AnomalyStatusBadge uses,
+// so a segmentation bar is never confusable with an anomaly-type or status
+// indicator shown elsewhere on the same page. Assigned in this fixed order
+// to whichever segment labels a chart renders, never reassigned based on
+// the current filter.
+export const SEGMENT_COLOR = ["#1baf7a", "#22d3ee", "#e87ba4", "#c2571a", "#4a3aa7"];

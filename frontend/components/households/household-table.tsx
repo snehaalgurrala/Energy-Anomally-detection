@@ -13,10 +13,10 @@ export function HouseholdTable({ rows }: { rows: HouseholdSummaryRecord[] }) {
   const currentQuery = useSearchParams().toString();
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-black/10 dark:border-white/15">
+    <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[1000px] border-collapse text-sm">
         <thead>
-          <tr className="border-b border-black/10 bg-black/[.02] text-left text-xs font-medium text-zinc-500 dark:border-white/15 dark:bg-white/[.03] dark:text-zinc-400">
+          <tr className="border-b border-border bg-surface text-left text-xs font-medium uppercase tracking-wide text-foreground-subtle">
             <th className="px-4 py-2.5 font-medium">Meter</th>
             <th className="px-4 py-2.5 font-medium">Tariff</th>
             <th className="px-4 py-2.5 font-medium">ACORN group</th>
@@ -46,39 +46,39 @@ export function HouseholdTable({ rows }: { rows: HouseholdSummaryRecord[] }) {
               <tr
                 key={row.LCLid}
                 onClick={handleRowClick}
-                className="cursor-pointer border-b border-black/5 last:border-b-0 hover:bg-black/[.03] dark:border-white/10 dark:hover:bg-white/[.05]"
+                className="cursor-pointer border-b border-border last:border-b-0 hover:bg-surface-hover"
               >
-                <td className="px-4 py-2.5 font-medium tabular-nums">
+                <td className="px-4 py-2.5 font-medium tabular-nums text-foreground">
                   <Link
                     href={href}
-                    className="rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black dark:focus-visible:outline-white"
+                    className="rounded-sm focus-visible:outline-2 focus-visible:outline-accent"
                   >
                     {row.LCLid}
                   </Link>
                 </td>
-                <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-300">{row.stdorToU ?? "—"}</td>
-                <td className="px-4 py-2.5 text-zinc-600 dark:text-zinc-300">
+                <td className="px-4 py-2.5 text-foreground-muted">{row.stdorToU ?? "—"}</td>
+                <td className="px-4 py-2.5 text-foreground-muted">
                   {row.Acorn_grouped ?? "—"}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.average_daily_consumption)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.median_daily_consumption)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.max_daily_consumption)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.consumption_variability)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.average_weekday_consumption)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.average_weekend_consumption)}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
+                <td className="px-4 py-2.5 text-right tabular-nums text-foreground">
                   {formatNumber(row.weekend_vs_weekday_ratio)}
                 </td>
               </tr>

@@ -13,7 +13,15 @@ import {
 } from "recharts";
 import type { DotItemDotProps, TooltipContentProps } from "recharts";
 import type { AnomalyRecord } from "@/lib/types";
-import { formatDay, formatNumber, ANOMALY_TYPE_COLOR } from "@/lib/format";
+import {
+  CHART_AXIS_TICK,
+  CHART_CURSOR_LINE,
+  CHART_GRID_STROKE,
+  CHART_TOOLTIP,
+  formatDay,
+  formatNumber,
+  ANOMALY_TYPE_COLOR,
+} from "@/lib/format";
 
 interface ChartPoint {
   day: string;
@@ -26,12 +34,12 @@ interface ChartPoint {
 // Design tokens shared with the rest of the page. ACTUAL is a dedicated CSS
 // var (light/dark aware, see globals.css) rather than `--foreground` so the
 // actual-consumption line reads as blue and prominent, per the chart's
-// visual spec. It's deliberately a different lightness than
-// ANOMALY_TYPE_COLOR.Drop (also blue) so a Drop marker sitting on the line
-// never reads as just a thicker bit of the line -- the halo ring drawn under
-// every marker (see renderActualDot) reinforces that separation further.
+// visual spec. ANOMALY_TYPE_COLOR.Drop is a violet, not blue, specifically
+// so a Drop marker sitting on this line never blends into it -- the halo
+// ring drawn under every marker (see renderActualDot) reinforces that
+// separation further.
 const ACTUAL = "var(--chart-actual)";
-const EXPECTED = "#a1a1aa";
+const EXPECTED = "var(--chart-expected)";
 const FOREGROUND = "var(--foreground)";
 const RING = "var(--background)";
 
@@ -41,6 +49,15 @@ const ANOMALY_HALF = 5;
 const SELECTED_ANOMALY_HALF = 7;
 const SELECTED_NORMAL_RADIUS = 6;
 const HALO_SCALE = 1.7;
+
+// Spikes vastly outnumber Drops in this dataset (dataset-wide, roughly 7:1),
+// so a meter with a long, spike-heavy history can end up with a triangle on
+// nearly every point -- congesting the chart far more than Drops ever do.
+// Drops are left alone (already sparse); Spikes are thinned to an evenly
+// spaced subset, capped at this count, purely as a rendering decision --
+// the underlying data/rows and anomaly classification are untouched, and
+// the selected day's own marker is always shown regardless of thinning.
+const MAX_SPIKE_MARKERS = 12;
 
 function trianglePoints(cx: number, cy: number, half: number, direction: "up" | "down"): string {
   return direction === "up"
@@ -73,26 +90,37 @@ export function MeterHistoryChart({
   // length, keeping the axis readable for meters with hundreds of records.
   const tickInterval = Math.max(0, Math.ceil(data.length / 12) - 1);
 
+  // Evenly-spaced subset of this meter's Spike indexes to actually draw a
+  // marker for -- see MAX_SPIKE_MARKERS above. Every Nth Spike (by position
+  // in the history) is kept so the visible markers still span the full
+  // timeline rather than clustering at one end.
+  const spikeIndexes: number[] = [];
+  data.forEach((point, i) => {
+    if (point.anomaly_status === "Anomaly" && point.anomaly_type === "Spike") spikeIndexes.push(i);
+  });
+  const spikeStep = Math.max(1, Math.ceil(spikeIndexes.length / MAX_SPIKE_MARKERS));
+  const visibleSpikeIndexes = new Set(spikeIndexes.filter((_, i) => i % spikeStep === 0));
+
   function renderTooltip({ active, payload }: TooltipContentProps) {
     const point = active ? (payload?.[0]?.payload as ChartPoint | undefined) : undefined;
     if (!point) return null;
     return (
-      <div className="rounded-lg border border-black/10 bg-white px-3 py-2 text-xs shadow-sm dark:border-white/15 dark:bg-zinc-900">
-        <p className="font-medium">{formatDay(point.day)}</p>
-        <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+      <div className={CHART_TOOLTIP}>
+        <p className="font-medium text-foreground">{formatDay(point.day)}</p>
+        <p className="mt-1 text-foreground-muted">
           Actual: {formatNumber(point.energy_sum)} kWh
         </p>
-        <p className="text-zinc-600 dark:text-zinc-300">
+        <p className="text-foreground-muted">
           Expected: {formatNumber(point.expected_consumption)} kWh
         </p>
         {point.anomaly_status && (
-          <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+          <p className="mt-1 text-foreground-subtle">
             {point.anomaly_status}
             {point.anomaly_type ? ` · ${point.anomaly_type}` : ""}
           </p>
         )}
         {point.day === selectedDay && (
-          <p className="mt-1 font-medium text-zinc-700 dark:text-zinc-200">Selected date</p>
+          <p className="mt-1 font-medium text-foreground">Selected date</p>
         )}
       </div>
     );
@@ -108,6 +136,11 @@ export function MeterHistoryChart({
     const isSelected = point.day === selectedDay;
     const isAnomaly = point.anomaly_status === "Anomaly";
     if (!isAnomaly && !isSelected) return null;
+
+    // Thinned-out Spikes are simply not drawn (unless it's the selected
+    // day, which always gets a marker) -- Drops are never thinned.
+    const isThinnedSpike = isAnomaly && point.anomaly_type === "Spike" && !visibleSpikeIndexes.has(index);
+    if (isThinnedSpike && !isSelected) return null;
 
     const shape = markerShape(point.anomaly_type);
     const color = isAnomaly ? (ANOMALY_TYPE_COLOR[point.anomaly_type ?? ""] ?? FOREGROUND) : FOREGROUND;
@@ -150,7 +183,7 @@ export function MeterHistoryChart({
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap items-center gap-4 text-xs text-zinc-500 dark:text-zinc-400">
+      <div className="mb-2 flex flex-wrap items-center gap-4 text-xs text-foreground-muted">
         <span className="inline-flex items-center gap-1.5">
           <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
             <polygon points="5,0 0,10 10,10" fill={ANOMALY_TYPE_COLOR.Spike} />
@@ -176,22 +209,22 @@ export function MeterHistoryChart({
           <CartesianGrid
             vertical={false}
             strokeDasharray="3 3"
-            className="stroke-black/10 dark:stroke-white/10"
+            className={CHART_GRID_STROKE}
           />
           <XAxis
             dataKey="day"
             tickFormatter={formatDay}
             interval={tickInterval}
             tick={{ fontSize: 11 }}
-            className="fill-zinc-500 dark:fill-zinc-400"
+            className={CHART_AXIS_TICK}
           />
           <YAxis
             tick={{ fontSize: 11 }}
             width={56}
             tickFormatter={(v: number) => formatNumber(v)}
-            className="fill-zinc-500 dark:fill-zinc-400"
+            className={CHART_AXIS_TICK}
           />
-          <Tooltip content={renderTooltip} />
+          <Tooltip content={renderTooltip} cursor={CHART_CURSOR_LINE} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           <ReferenceLine x={selectedDay} stroke={FOREGROUND} strokeOpacity={0.6} strokeDasharray="4 4" />
           <Line
@@ -211,6 +244,7 @@ export function MeterHistoryChart({
             stroke={ACTUAL}
             strokeWidth={2}
             dot={renderActualDot}
+            activeDot={{ r: 5, fill: "var(--accent)", stroke: "var(--background)", strokeWidth: 2 }}
             isAnimationActive={false}
           />
         </LineChart>
