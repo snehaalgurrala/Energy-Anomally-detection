@@ -82,7 +82,7 @@ export default async function AnomalyDetailPage({
               Chronological consumption and anomaly context for {meter}.
             </p>
             <div className="mt-4">
-              <MeterHistoryTable rows={history ?? []} selectedDay={day} />
+              <MeterHistoryTable key={`${meter}-${day}`} rows={history ?? []} selectedDay={day} />
             </div>
           </section>
         </>

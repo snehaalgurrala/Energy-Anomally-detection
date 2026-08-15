@@ -23,7 +23,7 @@ export const ANOMALY_QUERY_DEFAULTS: AnomalyQueryState = {
   sort_by: "hybrid_score",
   ascending: false,
   page: 1,
-  page_size: 50,
+  page_size: 10,
 };
 
 const SORT_COLUMNS: readonly SortColumn[] = [

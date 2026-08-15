@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Primary line color for the meter-history chart's actual-consumption
+     series -- kept distinct in lightness from the Drop anomaly-type color
+     (see ANOMALY_TYPE_COLOR in lib/format.tsx) so an overlapping Drop
+     marker never reads as part of the line. */
+  --chart-actual: #1d4ed8;
 }
 
 @theme inline {
@@ -16,6 +21,7 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --chart-actual: #60a5fa;
   }
 }
 
