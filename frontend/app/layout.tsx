@@ -41,6 +41,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               Anomalies
             </NavLink>
+            <NavLink
+              href="/households"
+              className="text-zinc-500 hover:underline dark:text-zinc-400"
+              activeClassName="font-medium hover:underline"
+            >
+              Households
+            </NavLink>
           </div>
         </nav>
         {children}

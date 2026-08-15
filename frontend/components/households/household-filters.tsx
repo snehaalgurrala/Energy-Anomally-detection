@@ -2,37 +2,38 @@
 
 import { useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { buildAnomaliesHref, type AnomalyQueryState } from "@/lib/anomaly-query";
+import { buildHouseholdsHref, type HouseholdQueryState } from "@/lib/household-query";
 import { FIELD, LABEL, PILL_BUTTON } from "@/lib/format";
-import type { SortColumn } from "@/lib/types";
+import type { HouseholdSortColumn } from "@/lib/types";
 
-const SORT_OPTIONS: { value: SortColumn; label: string }[] = [
-  { value: "hybrid_score", label: "Hybrid score" },
-  { value: "statistical_score", label: "Statistical score" },
-  { value: "if_score", label: "Isolation Forest score" },
-  { value: "deviation", label: "Deviation" },
-  { value: "day", label: "Date" },
+const SORT_OPTIONS: { value: HouseholdSortColumn; label: string }[] = [
+  { value: "LCLid", label: "Meter ID" },
+  { value: "average_daily_consumption", label: "Average daily consumption" },
+  { value: "median_daily_consumption", label: "Median daily consumption" },
+  { value: "max_daily_consumption", label: "Maximum daily consumption" },
+  { value: "consumption_variability", label: "Consumption variability" },
+  { value: "average_weekday_consumption", label: "Average weekday consumption" },
+  { value: "average_weekend_consumption", label: "Average weekend consumption" },
+  { value: "weekend_vs_weekday_ratio", label: "Weekend/weekday ratio" },
 ];
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
+export function HouseholdFilters({ query }: { query: HouseholdQueryState }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const changes: Partial<AnomalyQueryState> = {
-      meter: String(formData.get("meter") ?? "").trim(),
-      anomaly_type: String(formData.get("anomaly_type") ?? ""),
-      start_date: String(formData.get("start_date") ?? ""),
-      end_date: String(formData.get("end_date") ?? ""),
-      sort_by: formData.get("sort_by") as SortColumn,
+    const changes: Partial<HouseholdQueryState> = {
+      stdorToU: String(formData.get("stdorToU") ?? ""),
+      Acorn_grouped: String(formData.get("Acorn_grouped") ?? ""),
+      sort_by: formData.get("sort_by") as HouseholdSortColumn,
       ascending: formData.get("ascending") === "asc",
       page_size: Number(formData.get("page_size")),
     };
-    const href = buildAnomaliesHref(query, changes);
+    const href = buildHouseholdsHref(query, changes);
     // Wrapping the navigation in a transition keeps this form (and the
     // current results) mounted while the new page renders, instead of the
     // route's loading.tsx replacing the whole page for a filter tweak.
@@ -43,7 +44,7 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
 
   return (
     <form
-      key={`${query.meter}|${query.anomaly_type}|${query.start_date}|${query.end_date}|${query.sort_by}|${query.ascending}|${query.page_size}`}
+      key={`${query.stdorToU}|${query.Acorn_grouped}|${query.sort_by}|${query.ascending}|${query.page_size}`}
       onSubmit={handleSubmit}
       aria-busy={isPending}
       className={`flex flex-wrap items-end gap-3 rounded-lg border border-black/10 bg-white p-4 transition-opacity dark:border-white/15 dark:bg-black/20 ${
@@ -51,33 +52,24 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
       }`}
     >
       <label className={LABEL}>
-        Meter
-        <input
-          type="text"
-          name="meter"
-          defaultValue={query.meter}
-          placeholder="e.g. MAC000002"
-          className={`${FIELD} w-36`}
-        />
-      </label>
-
-      <label className={LABEL}>
-        Anomaly type
-        <select name="anomaly_type" defaultValue={query.anomaly_type} className={FIELD}>
+        Tariff
+        <select name="stdorToU" defaultValue={query.stdorToU} className={FIELD}>
           <option value="">All</option>
-          <option value="Spike">Spike</option>
-          <option value="Drop">Drop</option>
+          <option value="Std">Standard</option>
+          <option value="ToU">Time of Use</option>
         </select>
       </label>
 
       <label className={LABEL}>
-        Start date
-        <input type="date" name="start_date" defaultValue={query.start_date} className={FIELD} />
-      </label>
-
-      <label className={LABEL}>
-        End date
-        <input type="date" name="end_date" defaultValue={query.end_date} className={FIELD} />
+        ACORN group
+        <select name="Acorn_grouped" defaultValue={query.Acorn_grouped} className={FIELD}>
+          <option value="">All</option>
+          <option value="Affluent">Affluent</option>
+          <option value="Comfortable">Comfortable</option>
+          <option value="Adversity">Adversity</option>
+          <option value="ACORN-">ACORN-</option>
+          <option value="ACORN-U">ACORN-U</option>
+        </select>
       </label>
 
       <label className={LABEL}>
@@ -94,8 +86,8 @@ export function AnomalyFilters({ query }: { query: AnomalyQueryState }) {
       <label className={LABEL}>
         Direction
         <select name="ascending" defaultValue={query.ascending ? "asc" : "desc"} className={FIELD}>
-          <option value="desc">Descending</option>
           <option value="asc">Ascending</option>
+          <option value="desc">Descending</option>
         </select>
       </label>
 

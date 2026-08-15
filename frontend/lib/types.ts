@@ -53,3 +53,59 @@ export interface AnomalyListParams {
   page?: number;
   page_size?: number;
 }
+
+export interface HouseholdDatasetSummaryResponse {
+  total_meters: number;
+  total_half_hourly_readings: number;
+  date_range_start: string;
+  date_range_end: string;
+  total_daily_records: number;
+  average_daily_consumption: number | null;
+  average_household_daily_consumption: number | null;
+  missing_energy_readings: number;
+  incomplete_days: number;
+}
+
+export interface HouseholdSummaryRecord {
+  LCLid: string;
+  stdorToU: string | null;
+  Acorn: string | null;
+  Acorn_grouped: string | null;
+  average_daily_consumption: number | null;
+  median_daily_consumption: number | null;
+  max_daily_consumption: number | null;
+  minimum_daily_consumption: number | null;
+  consumption_std: number | null;
+  consumption_variability: number | null;
+  average_weekday_consumption: number | null;
+  average_weekend_consumption: number | null;
+  weekend_vs_weekday_ratio: number | null;
+}
+
+export interface HouseholdListResponse {
+  total: number;
+  page: number;
+  page_size: number;
+  rows: HouseholdSummaryRecord[];
+}
+
+export type HouseholdSortColumn =
+  | "LCLid"
+  | "average_daily_consumption"
+  | "median_daily_consumption"
+  | "max_daily_consumption"
+  | "minimum_daily_consumption"
+  | "consumption_std"
+  | "consumption_variability"
+  | "average_weekday_consumption"
+  | "average_weekend_consumption"
+  | "weekend_vs_weekday_ratio";
+
+export interface HouseholdListParams {
+  stdorToU?: string;
+  Acorn_grouped?: string;
+  sort_by?: HouseholdSortColumn;
+  ascending?: boolean;
+  page?: number;
+  page_size?: number;
+}

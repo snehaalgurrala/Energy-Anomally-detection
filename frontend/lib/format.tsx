@@ -44,6 +44,12 @@ export const CARD = "rounded-lg border border-black/10 bg-white dark:border-whit
 export const PILL_BUTTON =
   "rounded-full border border-black/[.08] px-4 text-sm font-medium transition-colors dark:border-white/[.145]";
 
+// Shared filter-form field/label styling, reused across the anomaly and
+// household explorer filter forms so the two don't drift apart.
+export const FIELD =
+  "rounded-md border border-black/10 bg-white px-2.5 py-1.5 text-sm dark:border-white/15 dark:bg-black/20";
+export const LABEL = "flex flex-col gap-1 text-xs font-medium text-zinc-500 dark:text-zinc-400";
+
 // Slots 1 (blue) and 2 (orange) of the app's categorical palette, in fixed
 // order -- validated as CVD-safe adjacent to each other in both color modes.
 // Kept as raw hex so non-Tailwind consumers (e.g. chart SVG fills) can reuse

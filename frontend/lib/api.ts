@@ -2,6 +2,9 @@ import type {
   AnomalyListParams,
   AnomalyListResponse,
   AnomalyRecord,
+  HouseholdDatasetSummaryResponse,
+  HouseholdListParams,
+  HouseholdListResponse,
   SummaryResponse,
 } from "./types";
 
@@ -57,4 +60,17 @@ export function getAnomalyDetail(meter: string, day: string): Promise<AnomalyRec
   return apiFetch<AnomalyRecord>(
     `/api/anomalies/${encodeURIComponent(meter)}/${encodeURIComponent(day)}`,
   );
+}
+
+export function getHouseholdsSummary(): Promise<HouseholdDatasetSummaryResponse> {
+  return apiFetch<HouseholdDatasetSummaryResponse>("/api/households/summary");
+}
+
+export function getHouseholds(params: HouseholdListParams = {}): Promise<HouseholdListResponse> {
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) query.set(key, String(value));
+  }
+  const qs = query.toString();
+  return apiFetch<HouseholdListResponse>(`/api/households${qs ? `?${qs}` : ""}`);
 }
