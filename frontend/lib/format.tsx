@@ -29,11 +29,26 @@ export function formatNumber(value: number | null, options?: Intl.NumberFormatOp
   return value.toLocaleString(DISPLAY_LOCALE, { maximumFractionDigits: 2, ...options });
 }
 
+// Used by monthly-trend charts (household consumption, anomaly activity) --
+// same pinned-locale reasoning as formatDay.
+export function formatMonth(month: string): string {
+  const date = new Date(`${month}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return month;
+  return date.toLocaleDateString(DISPLAY_LOCALE, { year: "numeric", month: "short", timeZone: "UTC" });
+}
+
 export function formatEvidence(value: number | null): string {
   if (value === null || Number.isNaN(value)) return "—";
   if (value === Infinity) return "∞";
   if (value === -Infinity) return "−∞";
   return `${(value * 100).toFixed(1)}%`;
+}
+
+// For values already on a 0-100 scale (e.g. anomaly_rate_pct), unlike
+// formatEvidence which expects a 0-1 fraction and multiplies by 100 itself.
+export function formatPercent(value: number | null): string {
+  if (value === null || Number.isNaN(value)) return "—";
+  return `${formatNumber(value)}%`;
 }
 
 // Shared container/button class fragments reused verbatim across pages and
@@ -93,3 +108,10 @@ export function AnomalyStatusBadge({ status }: { status: string | null }) {
     </span>
   );
 }
+
+// Slots 3-7 of the same categorical palette ANOMALY_TYPE_COLOR draws slots
+// 1-2 from (aqua, yellow, magenta, green, violet) -- deliberately skipping
+// the blue/orange anomaly slots so segmentation charts are never confusable
+// with anomaly Spike/Drop colors. Assigned in this fixed order to whichever
+// segment labels a chart renders, never reassigned based on the current filter.
+export const SEGMENT_COLOR = ["#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7"];

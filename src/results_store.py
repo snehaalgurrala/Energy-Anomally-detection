@@ -170,6 +170,55 @@ def get_anomaly_detail(meter: str, day: str) -> dict:
     return match.iloc[0].to_dict()
 
 
+def get_monthly_anomaly_trend() -> pd.DataFrame:
+    """Dataset-wide anomaly activity per calendar month: eligible-row count
+    (denominator context) plus anomaly/spike/drop counts. Grouped on the
+    calendar month derived from `day` -- there is no month-only column here,
+    so this avoids conflating e.g. Jan-2012 with Jan-2013 (same reasoning as
+    household_features.build_monthly_trend).
+    """
+    df = load_results()
+    month = df["day"].dt.to_period("M").dt.to_timestamp().rename("month")
+    trend = df.groupby(month).agg(
+        eligible_count=("eligibility_status", lambda s: (s == "eligible").sum()),
+        anomaly_count=("anomaly_status", lambda s: (s == "Anomaly").sum()),
+        spike_count=("anomaly_type", lambda s: (s == "Spike").sum()),
+        drop_count=("anomaly_type", lambda s: (s == "Drop").sum()),
+    ).reset_index()
+    return trend
+
+
+def get_high_anomaly_households() -> pd.DataFrame:
+    """Per-LCLid anomaly rollup, meters with at least one anomaly only.
+
+    anomaly_rate_pct uses the same eligible-row denominator as get_summary().
+    Every anomaly row is eligible (verified against the live results), so
+    eligible_count is always >= anomaly_count >= 1 for every row returned
+    here -- no zero-denominator case to guard.
+    """
+    df = load_results()
+    eligible_count = (
+        df[df["eligibility_status"] == "eligible"]
+        .groupby("LCLid", observed=True)
+        .size()
+        .rename("eligible_count")
+    )
+
+    anomalies = df[df["anomaly_status"] == "Anomaly"]
+    rollup = anomalies.groupby("LCLid", observed=True).agg(
+        anomaly_count=("day", "count"),
+        spike_count=("anomaly_type", lambda s: (s == "Spike").sum()),
+        drop_count=("anomaly_type", lambda s: (s == "Drop").sum()),
+        latest_anomaly_date=("day", "max"),
+        avg_hybrid_score=("hybrid_score", "mean"),
+        max_hybrid_score=("hybrid_score", "max"),
+    ).reset_index()
+
+    rollup = rollup.merge(eligible_count, on="LCLid")
+    rollup["anomaly_rate_pct"] = rollup["anomaly_count"] / rollup["eligible_count"] * 100
+    return rollup
+
+
 def _print_timing_report() -> None:
     t0 = perf_counter()
     load_results()

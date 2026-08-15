@@ -19,6 +19,7 @@ Run locally from the repo root:
     uvicorn src.api:app --reload
 """
 
+import json
 import sys
 from contextlib import asynccontextmanager
 from datetime import date
@@ -27,11 +28,25 @@ from time import perf_counter
 from typing import Literal
 
 import pandas as pd
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src.results_store import get_anomaly_detail, get_meter_history, get_summary, list_anomalies, load_results
+# Loads the repo-root .env (e.g. OPENROUTER_API_KEY) into the process
+# environment once, at import time -- before ai.llm_client.complete() ever
+# reads os.environ. Must run before any project import that could need it.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
+from src.results_store import (  # noqa: E402
+    get_anomaly_detail,
+    get_high_anomaly_households,
+    get_meter_history,
+    get_monthly_anomaly_trend,
+    get_summary,
+    list_anomalies,
+    load_results,
+)
 
 # Sibling modules under src/ use bare imports (e.g. `from household_consumption
 # import ...`) so they can also be run standalone (`python src/household_features.py`).
@@ -39,11 +54,21 @@ from src.results_store import get_anomaly_detail, get_meter_history, get_summary
 # via the same bare-import style -- same approach as src/pipeline.py.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from ai.anomaly_context import SYSTEM_PROMPT, build_anomaly_explanation_context  # noqa: E402
+from ai.llm_client import (  # noqa: E402
+    LlmConfigurationError,
+    LlmRequestError,
+    LlmResponseError,
+    LlmTimeoutError,
+    complete,
+)
+from anomaly_segmentation import build_anomaly_segment_summary  # noqa: E402
 from household_consumption import load_block, load_households  # noqa: E402
 from household_features import (  # noqa: E402
     build_daily_features,
     build_half_hourly_features,
     build_household_summary,
+    build_monthly_trend,
     build_validation_report,
 )
 
@@ -52,6 +77,16 @@ from household_features import (  # noqa: E402
 NEXTJS_DEV_ORIGIN = "http://localhost:3000"
 
 SortColumn = Literal["hybrid_score", "statistical_score", "if_score", "deviation", "day"]
+
+HighAnomalySortColumn = Literal[
+    "anomaly_count",
+    "spike_count",
+    "drop_count",
+    "anomaly_rate_pct",
+    "avg_hybrid_score",
+    "max_hybrid_score",
+    "latest_anomaly_date",
+]
 
 HouseholdSortColumn = Literal[
     "LCLid",
@@ -65,6 +100,49 @@ HouseholdSortColumn = Literal[
     "average_weekend_consumption",
     "weekend_vs_weekday_ratio",
 ]
+
+
+# Populated once by _load_anomaly_aggregates() at process startup; reused by
+# the Phase 3 anomaly-intelligence endpoints. Not touched by the household
+# endpoints below.
+_anomaly_cache: dict = {}
+
+
+def _load_anomaly_aggregates() -> None:
+    """Precompute the anomaly-side aggregations once, at process startup --
+    same reasoning as _load_household_data() below. Reuses the already-cached
+    results DataFrame (results_store.load_results(), loaded just before this
+    is called); no re-read of the Parquet file, no detector/pipeline logic.
+    """
+    monthly_df = get_monthly_anomaly_trend()
+    _anomaly_cache["monthly_trend"] = AnomalyMonthlyTrendResponse(
+        rows=[
+            AnomalyMonthlyTrendRecord(
+                month=row["month"].date(),
+                eligible_count=row["eligible_count"],
+                anomaly_count=row["anomaly_count"],
+                spike_count=row["spike_count"],
+                drop_count=row["drop_count"],
+            )
+            for row in monthly_df.to_dict(orient="records")
+        ]
+    )
+
+    _anomaly_cache["segments"] = AnomalySegmentSummaryResponse(
+        by_acorn_group=[
+            AnomalySegmentRecord(**row)
+            for row in build_anomaly_segment_summary("Acorn_grouped").to_dict(orient="records")
+        ],
+        by_tariff=[
+            AnomalySegmentRecord(**row)
+            for row in build_anomaly_segment_summary("stdorToU").to_dict(orient="records")
+        ],
+    )
+
+    # Kept as a raw DataFrame (not a Pydantic response) so /api/anomalies/by-household
+    # can sort/paginate it per-request, the same way _household_cache["household_df"]
+    # is sorted/paginated per-request by /api/households.
+    _anomaly_cache["household_rollup_df"] = get_high_anomaly_households()
 
 
 # Populated once by _load_household_data() at process startup; reused by
@@ -85,10 +163,21 @@ def _load_household_data() -> None:
     half_hourly_df = build_half_hourly_features(block_df, households_df)
     daily_df = build_daily_features(half_hourly_df)
     household_df = build_household_summary(daily_df)
+    monthly_trend_df = build_monthly_trend(daily_df)
     validation = build_validation_report(block_df, half_hourly_df, daily_df, household_df, timings={})
 
     _household_cache["daily_df"] = daily_df
     _household_cache["household_df"] = household_df
+    _household_cache["monthly_trend"] = HouseholdMonthlyTrendResponse(
+        rows=[
+            HouseholdMonthlyTrendRecord(
+                month=row["month"].date(),
+                average_daily_consumption=_none_if_nan(row["average_daily_consumption"]),
+                household_day_count=int(row["household_day_count"]),
+            )
+            for row in monthly_trend_df.to_dict(orient="records")
+        ]
+    )
     _household_cache["summary"] = HouseholdDatasetSummaryResponse(
         total_meters=validation["meters"],
         total_half_hourly_readings=validation["output_rows_half_hourly"],
@@ -111,6 +200,7 @@ def _load_household_data() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_results()  # cold-load the Parquet file once at startup, not on the first request
+    _load_anomaly_aggregates()  # cold-build the anomaly-side aggregations once at startup
     _load_household_data()  # cold-build the household feature tables once at startup
     yield
 
@@ -120,7 +210,7 @@ app = FastAPI(title="Energy Anomaly Detection API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[NEXTJS_DEV_ORIGIN],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -160,6 +250,60 @@ class AnomalyListResponse(BaseModel):
     rows: list[AnomalyRecord]
 
 
+class AnomalyMonthlyTrendRecord(BaseModel):
+    month: date
+    eligible_count: int
+    anomaly_count: int
+    spike_count: int
+    drop_count: int
+
+
+class AnomalyMonthlyTrendResponse(BaseModel):
+    rows: list[AnomalyMonthlyTrendRecord]
+
+
+class HighAnomalyHouseholdRecord(BaseModel):
+    LCLid: str
+    anomaly_count: int
+    spike_count: int
+    drop_count: int
+    eligible_count: int
+    anomaly_rate_pct: float
+    latest_anomaly_date: date
+    avg_hybrid_score: float | None
+    max_hybrid_score: float | None
+
+
+class HighAnomalyHouseholdListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    rows: list[HighAnomalyHouseholdRecord]
+
+
+class AnomalySegmentRecord(BaseModel):
+    segment: str
+    household_count: int
+    eligible_count: int
+    anomaly_count: int
+    spike_count: int
+    drop_count: int
+    anomaly_rate_pct: float
+
+
+class AnomalySegmentSummaryResponse(BaseModel):
+    by_acorn_group: list[AnomalySegmentRecord]
+    by_tariff: list[AnomalySegmentRecord]
+
+
+class AnomalyExplanationRequest(BaseModel):
+    question: str | None = None
+
+
+class AnomalyExplanationResponse(BaseModel):
+    analysis: str
+
+
 class HouseholdDatasetSummaryResponse(BaseModel):
     total_meters: int
     total_half_hourly_readings: int
@@ -170,6 +314,16 @@ class HouseholdDatasetSummaryResponse(BaseModel):
     average_household_daily_consumption: float | None
     missing_energy_readings: int
     incomplete_days: int
+
+
+class HouseholdMonthlyTrendRecord(BaseModel):
+    month: date
+    average_daily_consumption: float | None
+    household_day_count: int
+
+
+class HouseholdMonthlyTrendResponse(BaseModel):
+    rows: list[HouseholdMonthlyTrendRecord]
 
 
 class HouseholdSummaryRecord(BaseModel):
@@ -259,6 +413,12 @@ def _to_record(row: dict) -> AnomalyRecord:
     return AnomalyRecord(**clean)
 
 
+def _to_high_anomaly_household_record(row: dict) -> HighAnomalyHouseholdRecord:
+    clean = _clean_row(row)
+    clean["latest_anomaly_date"] = row["latest_anomaly_date"].date()
+    return HighAnomalyHouseholdRecord(**clean)
+
+
 def _to_household_record(row: dict) -> HouseholdSummaryRecord:
     return HouseholdSummaryRecord(**_clean_row(row))
 
@@ -308,6 +468,36 @@ def anomalies(
     )
 
 
+@app.get("/api/anomalies/monthly-trend", response_model=AnomalyMonthlyTrendResponse)
+def anomalies_monthly_trend() -> AnomalyMonthlyTrendResponse:
+    return _anomaly_cache["monthly_trend"]
+
+
+@app.get("/api/anomalies/segments", response_model=AnomalySegmentSummaryResponse)
+def anomalies_segments() -> AnomalySegmentSummaryResponse:
+    return _anomaly_cache["segments"]
+
+
+@app.get("/api/anomalies/by-household", response_model=HighAnomalyHouseholdListResponse)
+def anomalies_by_household(
+    sort_by: HighAnomalySortColumn = "anomaly_count",
+    ascending: bool = False,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+) -> HighAnomalyHouseholdListResponse:
+    df = _anomaly_cache["household_rollup_df"]
+    total = len(df)
+    df = df.sort_values(sort_by, ascending=ascending)
+    page_df = _paginate(df, page, page_size)
+
+    return HighAnomalyHouseholdListResponse(
+        total=total,
+        page=page,
+        page_size=page_size,
+        rows=[_to_high_anomaly_household_record(row) for row in page_df.to_dict(orient="records")],
+    )
+
+
 @app.get("/api/meters/{meter}/history", response_model=list[AnomalyRecord])
 def meter_history(meter: str) -> list[AnomalyRecord]:
     try:
@@ -326,6 +516,38 @@ def anomaly_detail(meter: str, day: date) -> AnomalyRecord:
     return _to_record(row)
 
 
+DEFAULT_EXPLANATION_QUESTION = (
+    "Explain this anomaly using the supplied data. Summarize what happened, "
+    "how unusual it was, and the most relevant evidence."
+)
+
+
+@app.post("/api/ai/anomalies/{meter}/{day}/explain", response_model=AnomalyExplanationResponse)
+def anomaly_explain(
+    meter: str,
+    day: date,
+    request: AnomalyExplanationRequest = AnomalyExplanationRequest(),
+) -> AnomalyExplanationResponse:
+    try:
+        context = build_anomaly_explanation_context(meter, day.isoformat())
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    question = request.question or DEFAULT_EXPLANATION_QUESTION
+    user_prompt = f"Context:\n{json.dumps(context)}\n\nQuestion: {question}"
+
+    try:
+        analysis = complete(SYSTEM_PROMPT, user_prompt)
+    except LlmConfigurationError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except LlmTimeoutError as e:
+        raise HTTPException(status_code=504, detail=str(e))
+    except (LlmRequestError, LlmResponseError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return AnomalyExplanationResponse(analysis=analysis)
+
+
 # --- Household analytics (read-only, block_0.csv-derived) ------------------
 #
 # NOTE: /api/households/summary must be registered before /api/households/{meter}
@@ -336,6 +558,11 @@ def anomaly_detail(meter: str, day: date) -> AnomalyRecord:
 @app.get("/api/households/summary", response_model=HouseholdDatasetSummaryResponse)
 def households_summary() -> HouseholdDatasetSummaryResponse:
     return _household_cache["summary"]
+
+
+@app.get("/api/households/monthly-trend", response_model=HouseholdMonthlyTrendResponse)
+def households_monthly_trend() -> HouseholdMonthlyTrendResponse:
+    return _household_cache["monthly_trend"]
 
 
 @app.get("/api/households", response_model=HouseholdListResponse)

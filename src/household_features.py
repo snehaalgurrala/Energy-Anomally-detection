@@ -209,6 +209,24 @@ def build_household_summary(daily_df: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
+def build_monthly_trend(daily_df: pd.DataFrame) -> pd.DataFrame:
+    """Dataset-wide average daily consumption per calendar month, across all households.
+
+    Grouped on the calendar month/year derived from `date` -- not the `month`
+    column, which is 1-12 with no year and would conflate e.g. Jan-2012 with
+    Jan-2013. Averages skip NaN daily_total values (fully-missing days) the
+    same way build_household_summary does, so a data gap never drags a
+    month's average toward zero.
+    """
+    month = daily_df["date"].dt.to_period("M").dt.to_timestamp().rename("month")
+    trend = (
+        daily_df.groupby(month, sort=True)["daily_total"]
+        .agg(average_daily_consumption="mean", household_day_count="count")
+        .reset_index()
+    )
+    return trend
+
+
 def _count_infinite_values(df: pd.DataFrame) -> int:
     numeric = df.select_dtypes(include=[np.number]).to_numpy(dtype="float64", na_value=np.nan)
     return int(np.isinf(numeric).sum())

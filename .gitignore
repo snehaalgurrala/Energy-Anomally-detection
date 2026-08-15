@@ -17,6 +17,9 @@ env/
 # Jupyter
 .ipynb_checkpoints/
 
+# Environment / secrets
+.env
+
 # OS
 .DS_Store
 Thumbs.db
