@@ -9,6 +9,8 @@ import type {
   DailyFeatureListParams,
   DailyFeatureListResponse,
   DailyFeatureRecord,
+  DashboardExplanationRequest,
+  DashboardExplanationResponse,
   HighAnomalyHouseholdListParams,
   HighAnomalyHouseholdListResponse,
   HouseholdDatasetSummaryResponse,
@@ -96,6 +98,16 @@ export function explainAnomaly(
       body: JSON.stringify(request),
     },
   );
+}
+
+export function explainDashboard(
+  request: DashboardExplanationRequest = {},
+): Promise<DashboardExplanationResponse> {
+  return apiFetch<DashboardExplanationResponse>("/api/ai/dashboard/explain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
 }
 
 export function getAnomaliesMonthlyTrend(): Promise<AnomalyMonthlyTrendResponse> {

@@ -237,3 +237,11 @@ export interface AnomalyExplanationRequest {
 export interface AnomalyExplanationResponse {
   analysis: string;
 }
+
+export interface DashboardExplanationRequest {
+  question?: string;
+}
+
+export interface DashboardExplanationResponse {
+  analysis: string;
+}

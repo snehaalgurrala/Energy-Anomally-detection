@@ -55,6 +55,11 @@ from src.results_store import (  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ai.anomaly_context import SYSTEM_PROMPT, build_anomaly_explanation_context  # noqa: E402
+from ai.dashboard_context import (  # noqa: E402
+    SYSTEM_PROMPT as DASHBOARD_SYSTEM_PROMPT,
+    TOP_HIGH_ANOMALY_HOUSEHOLDS,
+    build_dashboard_context,
+)
 from ai.llm_client import (  # noqa: E402
     LlmConfigurationError,
     LlmRequestError,
@@ -301,6 +306,14 @@ class AnomalyExplanationRequest(BaseModel):
 
 
 class AnomalyExplanationResponse(BaseModel):
+    analysis: str
+
+
+class DashboardExplanationRequest(BaseModel):
+    question: str | None = None
+
+
+class DashboardExplanationResponse(BaseModel):
     analysis: str
 
 
@@ -629,3 +642,45 @@ def household_daily(
         page_size=page_size,
         rows=[_to_daily_record(row) for row in page_rows.to_dict(orient="records")],
     )
+
+
+# --- Dashboard AI (read-only synthesis over the cached anomaly and household
+# aggregates built above; no new aggregation) -------------------------------
+
+DEFAULT_DASHBOARD_QUESTION = (
+    "Summarize the current state of energy anomaly detection on this dashboard: "
+    "overall anomaly activity, the recent trend, and which segments or households stand out."
+)
+
+
+@app.post("/api/ai/dashboard/explain", response_model=DashboardExplanationResponse)
+def dashboard_explain(
+    request: DashboardExplanationRequest = DashboardExplanationRequest(),
+) -> DashboardExplanationResponse:
+    top_households_df = _anomaly_cache["household_rollup_df"].sort_values(
+        "anomaly_count", ascending=False
+    )
+    context = build_dashboard_context(
+        summary=get_summary(),
+        monthly_trend_rows=[r.model_dump(mode="json") for r in _anomaly_cache["monthly_trend"].rows],
+        segment_summary=_anomaly_cache["segments"].model_dump(mode="json"),
+        top_high_anomaly_households=[
+            _to_high_anomaly_household_record(row).model_dump(mode="json")
+            for row in top_households_df.head(TOP_HIGH_ANOMALY_HOUSEHOLDS).to_dict(orient="records")
+        ],
+        household_dataset_summary=_household_cache["summary"].model_dump(mode="json"),
+    )
+
+    question = request.question or DEFAULT_DASHBOARD_QUESTION
+    user_prompt = f"Context:\n{json.dumps(context)}\n\nQuestion: {question}"
+
+    try:
+        analysis = complete(DASHBOARD_SYSTEM_PROMPT, user_prompt)
+    except LlmConfigurationError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except LlmTimeoutError as e:
+        raise HTTPException(status_code=504, detail=str(e))
+    except (LlmRequestError, LlmResponseError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    return DashboardExplanationResponse(analysis=analysis)

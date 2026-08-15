@@ -1,5 +1,6 @@
 import { getSummary } from "@/lib/api";
 import { CARD } from "@/lib/format";
+import { AiEnergyIntelligencePanel } from "@/components/dashboard/ai-energy-intelligence-panel";
 
 // This page must always reflect the latest results, so it renders per
 // request instead of being statically prerendered at build time.
@@ -41,6 +42,8 @@ export default async function Home() {
           <StatCard key={stat.label} label={stat.label} value={stat.value} />
         ))}
       </div>
+
+      <AiEnergyIntelligencePanel />
     </main>
   );
 }
