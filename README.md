@@ -4,9 +4,15 @@ Proof-of-concept for detecting anomalies in household energy consumption data.
 
 ## Dataset
 
-* Working dataset: `data/daily_dataset.csv.xlsx` — local only, never committed (`.gitignore`).
-* One row per meter (`LCLid`) per day, with half-hourly-derived aggregates (`energy_mean`, `energy_sum`, `energy_count`, etc.).
-* **Known limitation:** the workbook contains exactly 1,048,575 data rows — one below Excel's hard 1,048,576-row worksheet limit — and only 1,637 unique meters. This strongly indicates the source CSV was truncated when saved as `.xlsx` (see investigation in project history). No complete source file exists locally. The POC proceeds on the available data as-is; dataset size, meter list, and date range are **discovered dynamically at runtime** (never hardcoded), so this is a documented coverage limitation rather than a blocker.
+Three local datasets are required, none of which are committed to the repo (`.gitignore` excludes them by filename, while keeping the `data/` folder itself present):
+
+* `data/daily_dataset.csv.xlsx` — one row per meter (`LCLid`) per day, with half-hourly-derived aggregates (`energy_mean`, `energy_sum`, `energy_count`, etc.). This is the working dataset for the main pipeline (`src/data_validation.py`, `src/pipeline.py`, the detectors, `src/results_store.py`).
+* `data/block_0.csv` — raw half-hourly consumption readings.
+* `data/informations_households.csv` — household metadata, joinable to `block_0.csv` via `LCLid`.
+
+All three are loaded via repo-relative paths (`Path(__file__).resolve().parent.parent / "data" / ...`), so the project works regardless of where it's cloned — no absolute paths, drive letters, or machine-specific configuration. If a dataset is missing, the loader fails immediately with the expected relative path rather than searching the filesystem.
+
+* **Known limitation:** the `daily_dataset.csv.xlsx` workbook contains exactly 1,048,575 data rows — one below Excel's hard 1,048,576-row worksheet limit — and only 1,637 unique meters. This strongly indicates the source CSV was truncated when saved as `.xlsx` (see investigation in project history). No complete source file exists locally. The POC proceeds on the available data as-is; dataset size, meter list, and date range are **discovered dynamically at runtime** (never hardcoded), so this is a documented coverage limitation rather than a blocker.
 
 ## Architecture
 
@@ -50,6 +56,15 @@ Planned (not yet implemented): feature engineering and anomaly-detection modules
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+```
+
+Then place the three required datasets in `data/`:
+
+```text
+data/
+├── daily_dataset.csv.xlsx
+├── block_0.csv
+└── informations_households.csv
 ```
 
 ## Status

@@ -9,16 +9,27 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "daily_dataset.csv.xlsx"
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DATA_PATH = REPO_ROOT / "data" / "daily_dataset.csv.xlsx"
 ID_COLS = ["LCLid", "day"]
 ENERGY_COLS = ["energy_median", "energy_mean", "energy_max", "energy_std", "energy_sum", "energy_min"]
 EXPECTED_DAILY_READINGS = 48  # half-hourly readings per full day
 
 
+def _require(path: Path) -> Path:
+    if not path.is_file():
+        rel = path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path
+        raise FileNotFoundError(
+            f"Required dataset not found at '{rel}'. Place the file at this path "
+            "relative to the project root before running this pipeline."
+        )
+    return path
+
+
 def get_sheet_names(path: Path = DATA_PATH) -> list[str]:
     import openpyxl
 
-    wb = openpyxl.load_workbook(path, read_only=True)
+    wb = openpyxl.load_workbook(_require(path), read_only=True)
     try:
         return wb.sheetnames
     finally:
@@ -26,7 +37,7 @@ def get_sheet_names(path: Path = DATA_PATH) -> list[str]:
 
 
 def load_dataset(path: Path = DATA_PATH) -> pd.DataFrame:
-    df = pd.read_excel(path, engine="openpyxl")
+    df = pd.read_excel(_require(path), engine="openpyxl")
     df["day"] = pd.to_datetime(df["day"])
     return df
 

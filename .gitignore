@@ -1,6 +1,6 @@
-# Local dataset (keep data out of the repo)
-daily_dataset.csv
-daily_dataset.csv.xlsx
+# Local datasets (keep data out of the repo, but keep the data/ folder itself)
+data/*
+!data/.gitkeep
 
 # Pipeline output (derived, regenerable from the local dataset)
 results/
