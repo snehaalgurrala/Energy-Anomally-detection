@@ -17,9 +17,16 @@ at process startup (see `lifespan` below), and reused by every request.
 Run locally from the repo root:
 
     uvicorn src.api:app --reload
+
+To reach this API from another device on the same LAN (e.g. a phone or
+another computer loading the Next.js frontend), bind to all interfaces
+instead of just loopback:
+
+    uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 """
 
 import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from datetime import date
@@ -85,9 +92,16 @@ from household_features import (  # noqa: E402
     build_validation_report,
 )
 
-# Origin of the local Next.js dev server this API is built to serve.
-# Update this if the frontend runs on a different host/port.
-NEXTJS_DEV_ORIGIN = "http://localhost:3000"
+# Origin(s) of the Next.js dev server this API is built to serve, comma-
+# separated. Defaults to the local dev server; when the frontend is also
+# accessed from another device on the LAN (e.g. http://192.168.1.23:3000),
+# add that origin here via the FRONTEND_ORIGINS env var rather than editing
+# this default -- the browser's request Origin header must match exactly.
+FRONTEND_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("FRONTEND_ORIGINS", "http://localhost:3000").split(",")
+    if origin.strip()
+]
 
 SortColumn = Literal["hybrid_score", "statistical_score", "if_score", "deviation", "day"]
 
@@ -222,7 +236,7 @@ app = FastAPI(title="Energy Anomaly Detection API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[NEXTJS_DEV_ORIGIN],
+    allow_origins=FRONTEND_ORIGINS,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
